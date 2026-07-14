@@ -4,7 +4,9 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
 using SerpentsEyes.Core;
+using SerpentsEyes.Core.GameData;
 
 namespace SerpentsEyes.App.ViewModels;
 
@@ -168,7 +170,7 @@ public sealed class MainViewModel : ViewModelBase
             .ThenBy(g => g.Key, StringComparer.Ordinal);
         foreach (var group in groups)
         {
-            Categories.Add(new CategoryItem(group.Key, Display.Prettify(group.Key), group.Count()));
+            Categories.Add(new CategoryItem(group.Key, Display.CategoryDisplay(group.Key), group.Count()));
         }
 
         SelectedCategory = Categories.FirstOrDefault(c => c.Key == previousKey) ?? Categories[0];
@@ -186,12 +188,19 @@ public sealed class MainViewModel : ViewModelBase
             return;
         }
 
-        MapName = Display.Prettify(snapshot.MapName);
+        MapName = TagDatabase.MapTitle(snapshot.MapName) ?? Display.Prettify(snapshot.MapName);
         PositionText = string.Create(CultureInfo.InvariantCulture,
             $"X {snapshot.X:N0}   Y {snapshot.Y:N0}   Z {snapshot.Z:N0}");
 
         foreach (var entry in snapshot.Loadout)
         {
+            // Loadout ids are definition-asset names like "Tree_Warhammer".
+            var info = TagDatabase.FindByInternalId(entry.Id);
+            if (info?.DisplayName is not null)
+            {
+                Loadout.Add(new LoadoutChip(Display.CategorySingular(info.Category), info.DisplayName));
+                continue;
+            }
             int underscore = entry.Id.IndexOf('_');
             string kind = underscore > 0 ? entry.Id[..underscore] : entry.SlotType;
             string name = underscore > 0 ? entry.Id[(underscore + 1)..] : entry.Id;
@@ -218,17 +227,41 @@ public sealed class MainViewModel : ViewModelBase
         }
         if (search.Length > 0)
         {
-            records = records.Where(r => r.FullTag.Contains(search, StringComparison.OrdinalIgnoreCase));
+            records = records.Where(r =>
+                r.FullTag.Contains(search, StringComparison.OrdinalIgnoreCase)
+                || TagDatabase.Find(r.FullTag)?.DisplayName?.Contains(search, StringComparison.OrdinalIgnoreCase) == true);
         }
 
         var rows = records
             .OrderBy(r => { int i = Array.IndexOf(CategoryOrder, r.Category); return i < 0 ? int.MaxValue : i; })
             .ThenBy(r => r.Category, StringComparer.Ordinal)
             .ThenBy(r => r.Name, StringComparer.Ordinal)
-            .Select(r => new RecordRow(Display.Prettify(r.Name), r.FullTag, Display.Prettify(r.Category), r.Value));
+            .Select(MakeRow);
         foreach (var row in rows)
         {
             FilteredRecords.Add(row);
         }
+    }
+
+    private static RecordRow MakeRow(TagRecord record)
+    {
+        var info = TagDatabase.Find(record.FullTag);
+        string display = info?.DisplayName ?? Display.Prettify(record.Name);
+
+        var tooltip = new StringBuilder(record.FullTag);
+        if (info?.Description is { } desc)
+        {
+            tooltip.Append("\n\n").Append(desc);
+        }
+        if (info?.Flavor is { } flavor)
+        {
+            tooltip.Append("\n“").Append(flavor).Append('”');
+        }
+        if (info?.God is { } god)
+        {
+            tooltip.Append("\n\nGranted by the ").Append(god);
+        }
+
+        return new RecordRow(display, record.FullTag, Display.CategoryDisplay(record.Category), record.Value, tooltip.ToString());
     }
 }

@@ -6,4 +6,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/SerpentsEyes.Core.Tests/SerpentsEyes.Core.Tests.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/SerpentsEyes.Extractor/SerpentsEyes.Extractor.csproj" />
+  </Folder>
 </Solution>

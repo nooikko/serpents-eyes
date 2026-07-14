@@ -145,7 +145,7 @@
                          ItemsSource="{Binding FilteredRecords}">
                     <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="vm:RecordRow">
-                            <Grid ColumnDefinitions="130,*,Auto" ToolTip.Tip="{Binding RawTag}">
+                            <Grid ColumnDefinitions="130,*,Auto" ToolTip.Tip="{Binding Tooltip}">
                                 <TextBlock Grid.Column="0" Text="{Binding CategoryName}"
                                            FontSize="11" Foreground="{StaticResource TextMuted}"
                                            VerticalAlignment="Center" />

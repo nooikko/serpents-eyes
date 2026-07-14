@@ -8,8 +8,9 @@ Built as two pieces so others can build on it:
 
 | Project | What it is |
 | --- | --- |
-| `src/SerpentsEyes.Core` | The API: a zero-dependency, AOT-safe .NET library that parses and re-serializes save files with a **byte-perfect round-trip guarantee**. |
+| `src/SerpentsEyes.Core` | The API: a zero-dependency, AOT-safe .NET library that parses and re-serializes save files with a **byte-perfect round-trip guarantee**. Includes `GameData.TagDatabase`: in-game display names, descriptions, unlock hints, and god affinities for every progression tag. |
 | `src/SerpentsEyes.App` | A read-only Avalonia desktop viewer built on top of the Core library. |
+| `tools/SerpentsEyes.Extractor` | Regenerates the tag database from an unpacked copy of the game (see below). |
 
 ## Using the app
 
@@ -51,6 +52,34 @@ profile.Save(path);                                // write-capable (back up fir
 ```
 
 `SaveLocator.DefaultSaveDirectory` / `SaveLocator.FindProfiles()` locate save files on disk.
+
+### Game data (display names)
+
+```csharp
+using SerpentsEyes.Core.GameData;
+
+TagDatabase.Find("Progression.Blessing.ChanceHoT")?.DisplayName;   // "Daydreams"
+TagDatabase.FindByInternalId("Tree_Warhammer")?.DisplayName;       // "Gatekeeper's Warhammer"
+TagDatabase.MapTitle("Majin_HolyCity");                            // "Namah, City of Pilgrims"
+```
+
+`TagDatabase.g.cs` is generated — do not edit it. To regenerate after a game update:
+
+```
+dotnet run --project tools/SerpentsEyes.Extractor [-- <path-to-Content-root>]
+```
+
+The extractor expects an unpacked game at
+`C:\Users\elija\Documents\serpents_gaze_workbench\extracted\legacy\NinjaGarden\Content`
+by default (see that workbench's CLAUDE.md for how the game was extracted with retoc).
+It parses the game's 18 StringTable assets plus ~140 item-definition assets
+(classes, weapon trees, blessings, mushrooms/Callings, seeds, utilities/Relics,
+curse cards) and emits the generated C# plus a JSON report.
+
+Note the game's own vocabulary, which the app follows: mushrooms are **Callings**,
+utilities are **Relics**, items are **Seeds**, and the internal tag names often differ
+from display names (tag `Curse.Jester` lives in asset `CA_BardBoy` and displays as
+"The Jester"; tag `Curse.HordeCaller` is the "Dreamcallers" curse).
 
 ## Save format (`NG_SaveFormat_4`)
 
