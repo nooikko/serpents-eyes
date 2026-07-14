@@ -74,14 +74,22 @@
                          SelectedItem="{Binding SelectedCategory}">
                     <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="vm:CategoryItem">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Grid.Column="0" Text="{Binding DisplayName}"
-                                           FontSize="13" Foreground="{StaticResource Text}" />
-                                <TextBlock Grid.Column="1" Text="{Binding Count}"
-                                           FontSize="11.5" FontFamily="{StaticResource MonoFont}"
-                                           Foreground="{StaticResource TextMuted}"
-                                           VerticalAlignment="Center" />
-                            </Grid>
+                            <StackPanel Spacing="5">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="{Binding DisplayName}"
+                                               FontSize="13" Foreground="{StaticResource Text}" />
+                                    <TextBlock Grid.Column="1" Text="{Binding CountText}"
+                                               FontSize="11.5" FontFamily="{StaticResource MonoFont}"
+                                               Foreground="{StaticResource TextMuted}"
+                                               VerticalAlignment="Center" />
+                                </Grid>
+                                <ProgressBar IsVisible="{Binding HasCompletion}"
+                                             Classes.complete="{Binding IsComplete}"
+                                             Minimum="0" Maximum="{Binding ProgressMax}" Value="{Binding ProgressValue}"
+                                             MinHeight="3" Height="3" CornerRadius="2"
+                                             Background="{StaticResource Bg3}"
+                                             Foreground="{StaticResource GoldDim}" />
+                            </StackPanel>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
@@ -149,10 +157,19 @@
                                 <TextBlock Grid.Column="0" Text="{Binding CategoryName}"
                                            FontSize="11" Foreground="{StaticResource TextMuted}"
                                            VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="1" Text="{Binding DisplayName}"
-                                           FontSize="13" Foreground="{StaticResource Text}"
-                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock Classes="rowname" Text="{Binding DisplayName}"
+                                               FontSize="13" Foreground="{StaticResource Text}"
+                                               Opacity="{Binding NameOpacity}"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock IsVisible="{Binding HasUnlockHint}"
+                                               Text="{Binding UnlockHint}"
+                                               FontSize="11" FontStyle="Italic"
+                                               Foreground="{StaticResource GoldDim}"
+                                               TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
                                 <Border Grid.Column="2" MinWidth="34" Padding="8,2"
+                                        IsVisible="{Binding !IsLocked}"
                                         Background="{StaticResource Bg3}" CornerRadius="10"
                                         VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Value}" FontSize="11.5"
@@ -160,6 +177,9 @@
                                                Foreground="{StaticResource Gold}"
                                                HorizontalAlignment="Center" />
                                 </Border>
+                                <TextBlock Grid.Column="2" IsVisible="{Binding IsLocked}"
+                                           Text="🔒" FontSize="12" Opacity="0.55"
+                                           VerticalAlignment="Center" HorizontalAlignment="Center" />
                             </Grid>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
@@ -167,7 +187,7 @@
 
                 <TextBlock Grid.Row="2" Margin="18,8,18,12" FontSize="11"
                            Foreground="{StaticResource TextMuted}"
-                           Text="Read-only viewer · counters show unlocks, run tallies and kill counts" />
+                           Text="{Binding CompletionText}" />
             </Grid>
         </Grid>
     </Grid>

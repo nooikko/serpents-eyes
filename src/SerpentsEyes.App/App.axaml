@@ -85,6 +85,11 @@
             <Setter Property="Background" Value="{StaticResource Bg3}" />
         </Style>
 
+        <!-- Fully-completed category progress bars glow gold -->
+        <Style Selector="ProgressBar.complete">
+            <Setter Property="Foreground" Value="{StaticResource Gold}" />
+        </Style>
+
         <Style Selector="TextBox.search">
             <Setter Property="Background" Value="{StaticResource Bg1}" />
             <Setter Property="BorderBrush" Value="{StaticResource Stroke}" />

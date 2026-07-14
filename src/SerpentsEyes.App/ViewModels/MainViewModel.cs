@@ -21,6 +21,11 @@ public sealed class MainViewModel : ViewModelBase
         "KillsFor", "Kill", "Curse", "Quest", "Shortcut", "Location", "Emotes", "Utility",
     ];
 
+    /// <summary>Game-data tags grouped by category — the "everything that exists" side of completion.</summary>
+    private static readonly Dictionary<string, List<GameTagInfo>> DbByCategory =
+        TagDatabase.All.GroupBy(t => t.Category)
+            .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.Ordinal);
+
     private SaveProfile? _profile;
     private ProfileChoice? _selectedProfile;
     private CategoryItem? _selectedCategory;
@@ -30,6 +35,7 @@ public sealed class MainViewModel : ViewModelBase
     private string _mapName = string.Empty;
     private string _positionText = string.Empty;
     private string _fileInfoText = string.Empty;
+    private string _completionText = string.Empty;
 
     public MainViewModel()
     {
@@ -91,6 +97,9 @@ public sealed class MainViewModel : ViewModelBase
     }
 
     public bool HasStatus => _statusMessage is not null;
+
+    /// <summary>Footer summary for the selected category, e.g. "19 of 26 Callings unlocked".</summary>
+    public string CompletionText { get => _completionText; private set => SetField(ref _completionText, value); }
 
     public bool HasRun { get => _hasRun; private set => SetField(ref _hasRun, value); }
     public string MapName { get => _mapName; private set => SetField(ref _mapName, value); }
@@ -162,15 +171,34 @@ public sealed class MainViewModel : ViewModelBase
             return;
         }
 
-        Categories.Add(new CategoryItem(AllCategoriesKey, "All", _profile.Records.Count));
-
-        var groups = _profile.Records
+        var ownedByCategory = _profile.Records
             .GroupBy(r => r.Category)
-            .OrderBy(g => { int i = Array.IndexOf(CategoryOrder, g.Key); return i < 0 ? int.MaxValue : i; })
-            .ThenBy(g => g.Key, StringComparer.Ordinal);
-        foreach (var group in groups)
+            .ToDictionary(g => g.Key, g => g.Select(r => r.FullTag).ToHashSet(StringComparer.Ordinal));
+
+        var categoryKeys = ownedByCategory.Keys.Union(DbByCategory.Keys, StringComparer.Ordinal)
+            .OrderBy(k => { int i = Array.IndexOf(CategoryOrder, k); return i < 0 ? int.MaxValue : i; })
+            .ThenBy(k => k, StringComparer.Ordinal)
+            .ToList();
+
+        int allOwned = _profile.Records.Count, allTotal = 0;
+        var items = new List<CategoryItem>();
+        foreach (string key in categoryKeys)
         {
-            Categories.Add(new CategoryItem(group.Key, Display.CategoryDisplay(group.Key), group.Count()));
+            var owned = ownedByCategory.GetValueOrDefault(key) ?? [];
+            int? total = null;
+            if (DbByCategory.TryGetValue(key, out var known))
+            {
+                // The universe is the union: the save can hold tags the game data doesn't list.
+                total = known.Select(t => t.Tag).Union(owned, StringComparer.Ordinal).Count();
+            }
+            allTotal += total ?? owned.Count;
+            items.Add(new CategoryItem(key, Display.CategoryDisplay(key), owned.Count, total));
+        }
+
+        Categories.Add(new CategoryItem(AllCategoriesKey, "All", allOwned, allTotal));
+        foreach (var item in items)
+        {
+            Categories.Add(item);
         }
 
         SelectedCategory = Categories.FirstOrDefault(c => c.Key == previousKey) ?? Categories[0];
@@ -240,6 +268,77 @@ public sealed class MainViewModel : ViewModelBase
         foreach (var row in rows)
         {
             FilteredRecords.Add(row);
+        }
+
+        foreach (var row in LockedRows(all, categoryKey, search))
+        {
+            FilteredRecords.Add(row);
+        }
+
+        UpdateCompletionText();
+    }
+
+    /// <summary>Known game content the save has never touched, shown greyed with unlock hints.</summary>
+    private IEnumerable<RecordRow> LockedRows(bool all, string? categoryKey, string search)
+    {
+        var ownedTags = _profile!.Records.Select(r => r.FullTag).ToHashSet(StringComparer.Ordinal);
+
+        IEnumerable<GameTagInfo> known = all
+            ? TagDatabase.All
+            : DbByCategory.GetValueOrDefault(categoryKey ?? "") ?? Enumerable.Empty<GameTagInfo>();
+
+        var locked = known.Where(t => !ownedTags.Contains(t.Tag));
+        if (search.Length > 0)
+        {
+            locked = locked.Where(t =>
+                t.Tag.Contains(search, StringComparison.OrdinalIgnoreCase)
+                || t.DisplayName?.Contains(search, StringComparison.OrdinalIgnoreCase) == true);
+        }
+
+        return locked
+            .OrderBy(t => { int i = Array.IndexOf(CategoryOrder, t.Category); return i < 0 ? int.MaxValue : i; })
+            .ThenBy(t => t.DisplayName ?? t.Tag, StringComparer.Ordinal)
+            .Select(MakeLockedRow);
+    }
+
+    private static RecordRow MakeLockedRow(GameTagInfo info)
+    {
+        string leaf = info.Tag.Split('.') is { Length: >= 3 } parts ? string.Join('.', parts[2..]) : info.Tag;
+        string display = info.DisplayName ?? Display.Prettify(leaf);
+        string? hint = info.UnlockHint ?? (info.God is { } god ? $"Offered by the {god}" : null);
+
+        var tooltip = new StringBuilder(info.Tag);
+        tooltip.Append("\n\nNot in your save yet.");
+        if (info.Description is { } desc)
+        {
+            tooltip.Append("\n\n").Append(desc);
+        }
+        if (info.Flavor is { } flavor)
+        {
+            tooltip.Append("\n“").Append(flavor).Append('”');
+        }
+        if (hint is not null)
+        {
+            tooltip.Append("\n\nHow to get it: ").Append(hint);
+        }
+
+        return new RecordRow(display, info.Tag, Display.CategoryDisplay(info.Category), 0,
+            tooltip.ToString(), IsLocked: true, UnlockHint: hint);
+    }
+
+    private void UpdateCompletionText()
+    {
+        if (_selectedCategory is { HasCompletion: true, Total: { } total } cat)
+        {
+            int locked = total - cat.Owned;
+            string what = cat.Key == AllCategoriesKey ? "known unlocks" : cat.DisplayName;
+            CompletionText = locked == 0
+                ? $"All {total} {what} collected"
+                : $"{cat.Owned} of {total} {what} collected · greyed rows show what's left and how to get it";
+        }
+        else
+        {
+            CompletionText = "Read-only viewer · counters show unlocks, run tallies and kill counts";
         }
     }
 
