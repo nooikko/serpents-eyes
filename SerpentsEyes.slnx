@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SerpentsEyes.App/SerpentsEyes.App.csproj" />
+    <Project Path="src/SerpentsEyes.Core/SerpentsEyes.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SerpentsEyes.Core.Tests/SerpentsEyes.Core.Tests.csproj" />
+  </Folder>
+</Solution>

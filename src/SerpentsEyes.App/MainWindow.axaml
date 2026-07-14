@@ -1,0 +1,174 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:SerpentsEyes.App.ViewModels"
+        mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="720"
+        x:Class="SerpentsEyes.App.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="Serpent's Eyes"
+        Width="1100" Height="720" MinWidth="820" MinHeight="520"
+        Background="{StaticResource Bg0}"
+        ExtendClientAreaToDecorationsHint="True"
+        WindowDecorations="None">
+
+    <Grid RowDefinitions="36,*">
+
+        <!-- ═══ Custom title bar ═══ -->
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*,Auto"
+              Background="{StaticResource Bg1}"
+              WindowDecorationProperties.ElementRole="TitleBar">
+
+            <!-- Serpent-eye mark + wordmark -->
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="9" Margin="14,0,18,0"
+                        VerticalAlignment="Center">
+                <Canvas Width="20" Height="12" VerticalAlignment="Center">
+                    <Path Stroke="{StaticResource Gold}" StrokeThickness="1.3"
+                          Data="M 1,6 Q 10,-2.5 19,6 Q 10,14.5 1,6 Z" />
+                    <Ellipse Canvas.Left="8" Canvas.Top="2" Width="4" Height="8"
+                             Fill="{StaticResource Gold}" />
+                </Canvas>
+                <TextBlock Text="Serpent's Eyes" FontFamily="{StaticResource DisplayFont}"
+                           FontSize="15" Foreground="{StaticResource Text}"
+                           VerticalAlignment="Center" />
+            </StackPanel>
+
+            <!-- Profile picker lives in the title bar, like a channel switcher -->
+            <ComboBox Grid.Column="1" MinWidth="170" VerticalAlignment="Center"
+                      FontSize="12" Padding="10,4"
+                      WindowDecorationProperties.ElementRole="User"
+                      Background="{StaticResource Bg2}" BorderBrush="{StaticResource Stroke}"
+                      ItemsSource="{Binding Profiles}"
+                      SelectedItem="{Binding SelectedProfile}" />
+
+            <Button Grid.Column="2" HorizontalAlignment="Left" VerticalAlignment="Center"
+                    Margin="8,0" Padding="10,4" FontSize="12"
+                    WindowDecorationProperties.ElementRole="User"
+                    Background="Transparent" Foreground="{StaticResource TextMuted}"
+                    Click="Reload_Click" ToolTip.Tip="Re-read the save file from disk">
+                ⟳ Reload
+            </Button>
+
+            <!-- Caption buttons -->
+            <StackPanel Grid.Column="3" Orientation="Horizontal">
+                <Button Classes="caption" WindowDecorationProperties.ElementRole="MinimizeButton"
+                        Click="Minimize_Click" FontSize="12">🗕</Button>
+                <Button Classes="caption" WindowDecorationProperties.ElementRole="MaximizeButton"
+                        Click="Maximize_Click" FontSize="12">🗖</Button>
+                <Button Classes="caption close" WindowDecorationProperties.ElementRole="CloseButton"
+                        Click="Close_Click" FontSize="12">🗙</Button>
+            </StackPanel>
+        </Grid>
+
+        <!-- ═══ Body ═══ -->
+        <Grid Grid.Row="1" ColumnDefinitions="230,*">
+
+            <!-- Sidebar -->
+            <Grid Grid.Column="0" RowDefinitions="Auto,*,Auto" Background="{StaticResource Bg1}">
+                <TextBlock Grid.Row="0" Text="PROGRESSION" Margin="18,16,18,8"
+                           FontSize="10.5" LetterSpacing="1.6"
+                           Foreground="{StaticResource GoldDim}" />
+
+                <ListBox Grid.Row="1" Classes="sidebar" Margin="8,0"
+                         ItemsSource="{Binding Categories}"
+                         SelectedItem="{Binding SelectedCategory}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:CategoryItem">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="{Binding DisplayName}"
+                                           FontSize="13" Foreground="{StaticResource Text}" />
+                                <TextBlock Grid.Column="1" Text="{Binding Count}"
+                                           FontSize="11.5" FontFamily="{StaticResource MonoFont}"
+                                           Foreground="{StaticResource TextMuted}"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- Current run card -->
+                <Border Grid.Row="2" Margin="12" Padding="14,12"
+                        Background="{StaticResource Bg2}" BorderBrush="{StaticResource Stroke}"
+                        BorderThickness="1" CornerRadius="8"
+                        IsVisible="{Binding HasRun}">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="CURRENT RUN" FontSize="10" LetterSpacing="1.6"
+                                   Foreground="{StaticResource GoldDim}" />
+                        <TextBlock Text="{Binding MapName}"
+                                   FontFamily="{StaticResource DisplayFont}" FontSize="17"
+                                   Foreground="{StaticResource Gold}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding PositionText}"
+                                   FontFamily="{StaticResource MonoFont}" FontSize="10.5"
+                                   Foreground="{StaticResource TextMuted}" />
+                        <ItemsControl ItemsSource="{Binding Loadout}" Margin="0,4,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:LoadoutChip">
+                                    <Grid ColumnDefinitions="Auto,*" Margin="0,2">
+                                        <Border Grid.Column="0" Background="{StaticResource Bg3}"
+                                                CornerRadius="4" Padding="6,1" Margin="0,0,8,0"
+                                                VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Kind}" FontSize="10"
+                                                       Foreground="{StaticResource TextMuted}" />
+                                        </Border>
+                                        <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12"
+                                                   Foreground="{StaticResource Text}"
+                                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Main pane -->
+            <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto">
+
+                <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="18,14,18,10">
+                    <TextBox Grid.Column="0" Classes="search" PlaceholderText="Search tags…"
+                             Text="{Binding SearchText}" MaxWidth="420" HorizontalAlignment="Left" />
+                    <TextBlock Grid.Column="1" Text="{Binding FileInfoText}"
+                               FontSize="11" Foreground="{StaticResource TextMuted}"
+                               VerticalAlignment="Center" />
+                </Grid>
+
+                <!-- Status / empty state -->
+                <TextBlock Grid.Row="1" IsVisible="{Binding HasStatus}"
+                           Text="{Binding StatusMessage}"
+                           Margin="40" MaxWidth="480" TextWrapping="Wrap"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Foreground="{StaticResource TextMuted}" />
+
+                <!-- Record table -->
+                <ListBox Grid.Row="1" Classes="records" Margin="10,0"
+                         IsVisible="{Binding !HasStatus}"
+                         ItemsSource="{Binding FilteredRecords}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:RecordRow">
+                            <Grid ColumnDefinitions="130,*,Auto" ToolTip.Tip="{Binding RawTag}">
+                                <TextBlock Grid.Column="0" Text="{Binding CategoryName}"
+                                           FontSize="11" Foreground="{StaticResource TextMuted}"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{Binding DisplayName}"
+                                           FontSize="13" Foreground="{StaticResource Text}"
+                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                <Border Grid.Column="2" MinWidth="34" Padding="8,2"
+                                        Background="{StaticResource Bg3}" CornerRadius="10"
+                                        VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Value}" FontSize="11.5"
+                                               FontFamily="{StaticResource MonoFont}"
+                                               Foreground="{StaticResource Gold}"
+                                               HorizontalAlignment="Center" />
+                                </Border>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <TextBlock Grid.Row="2" Margin="18,8,18,12" FontSize="11"
+                           Foreground="{StaticResource TextMuted}"
+                           Text="Read-only viewer · counters show unlocks, run tallies and kill counts" />
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>

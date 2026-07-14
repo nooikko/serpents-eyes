@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <IsAotCompatible>true</IsAotCompatible>
+    <RootNamespace>SerpentsEyes.Core</RootNamespace>
+    <Description>Typed reader/writer for Serpent's Gaze save files (NinjaGarden NG_SaveFormat_4).</Description>
+  </PropertyGroup>
+
+</Project>

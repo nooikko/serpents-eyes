@@ -1,0 +1,95 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="SerpentsEyes.App.App"
+             RequestedThemeVariant="Dark">
+
+    <Application.Resources>
+        <!-- Serpentine palette: deep green-black depths, pale sage text, aged-gold accent. -->
+        <Color x:Key="Bg0Color">#0C1210</Color>
+        <Color x:Key="Bg1Color">#111A15</Color>
+        <Color x:Key="Bg2Color">#17231C</Color>
+        <Color x:Key="Bg3Color">#1E2D24</Color>
+        <Color x:Key="StrokeColor">#243328</Color>
+        <Color x:Key="TextColor">#DCE5DE</Color>
+        <Color x:Key="TextMutedColor">#7C8F82</Color>
+        <Color x:Key="GoldColor">#C9A85C</Color>
+        <Color x:Key="GoldDimColor">#87743F</Color>
+
+        <SolidColorBrush x:Key="Bg0" Color="{StaticResource Bg0Color}" />
+        <SolidColorBrush x:Key="Bg1" Color="{StaticResource Bg1Color}" />
+        <SolidColorBrush x:Key="Bg2" Color="{StaticResource Bg2Color}" />
+        <SolidColorBrush x:Key="Bg3" Color="{StaticResource Bg3Color}" />
+        <SolidColorBrush x:Key="Stroke" Color="{StaticResource StrokeColor}" />
+        <SolidColorBrush x:Key="Text" Color="{StaticResource TextColor}" />
+        <SolidColorBrush x:Key="TextMuted" Color="{StaticResource TextMutedColor}" />
+        <SolidColorBrush x:Key="Gold" Color="{StaticResource GoldColor}" />
+        <SolidColorBrush x:Key="GoldDim" Color="{StaticResource GoldDimColor}" />
+
+        <FontFamily x:Key="DisplayFont">Constantia, Cambria, Georgia</FontFamily>
+        <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas</FontFamily>
+    </Application.Resources>
+
+    <Application.Styles>
+        <FluentTheme />
+
+        <!-- Caption buttons in the custom title bar -->
+        <Style Selector="Button.caption">
+            <Setter Property="Width" Value="46" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.caption:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource Bg3}" />
+            <Setter Property="Foreground" Value="{StaticResource Text}" />
+        </Style>
+        <Style Selector="Button.caption.close:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#C42B1C" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <!-- Sidebar category list -->
+        <Style Selector="ListBox.sidebar">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.sidebar ListBoxItem">
+            <Setter Property="Padding" Value="10,7" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Margin" Value="0,1" />
+        </Style>
+        <Style Selector="ListBox.sidebar ListBoxItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource Bg2}" />
+        </Style>
+        <Style Selector="ListBox.sidebar ListBoxItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource Bg3}" />
+        </Style>
+
+        <!-- Record list -->
+        <Style Selector="ListBox.records">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+        <Style Selector="ListBox.records ListBoxItem">
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="MinHeight" Value="40" />
+        </Style>
+        <Style Selector="ListBox.records ListBoxItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource Bg2}" />
+        </Style>
+        <Style Selector="ListBox.records ListBoxItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource Bg3}" />
+        </Style>
+
+        <Style Selector="TextBox.search">
+            <Setter Property="Background" Value="{StaticResource Bg1}" />
+            <Setter Property="BorderBrush" Value="{StaticResource Stroke}" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Padding" Value="10,7" />
+        </Style>
+    </Application.Styles>
+</Application>
