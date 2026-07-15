@@ -3,16 +3,25 @@ using SerpentsEyes.Core.GameData;
 
 namespace SerpentsEyes.App.ViewModels;
 
+/// <summary>Collection state of a card: locked, unlocked, or never lockable at all.</summary>
+public enum CardState
+{
+    Unlocked,
+    Locked,
+    AlwaysAvailable,
+}
+
 /// <summary>One tile in the content grid.</summary>
 public sealed record ItemCard(
     string Tag,
     string Name,
     string CategoryKey,
     Bitmap? Icon,
-    bool IsLocked,
+    CardState State,
     int? Value,
     GameTagInfo? Info)
 {
+    public bool IsLocked => State == CardState.Locked;
     public double CardOpacity => IsLocked ? 0.38 : 1.0;
     public bool HasIcon => Icon is not null;
 }

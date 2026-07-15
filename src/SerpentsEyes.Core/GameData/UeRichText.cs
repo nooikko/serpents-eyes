@@ -121,6 +121,134 @@ public static class ScalingMath
     /// <summary>True when the formula depends only on item level (no player-attribute terms).</summary>
     public static bool IsLevelOnly(string expression) => !expression.Contains("{p_", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Formats a formula for display with explicit grouping: "1+2*{l}" becomes
+    /// "1 + (2 × Lv)". Multiplicative terms are parenthesized whenever they sit next
+    /// to +/- so precedence never has to be inferred. Returns null if unparseable.
+    /// </summary>
+    public static string? TryFormat(string expression, Func<string, string> resolvePlaceholder)
+    {
+        try
+        {
+            var formatter = new Formatter(expression, resolvePlaceholder);
+            var (text, _) = formatter.FormatExpression();
+            return formatter.AtEnd ? text : null;
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
+    }
+
+    private sealed class Formatter(string text, Func<string, string> resolve)
+    {
+        private int _pos;
+
+        public bool AtEnd
+        {
+            get
+            {
+                SkipWhitespace();
+                return _pos >= text.Length;
+            }
+        }
+
+        public (string Text, bool IsMulti) FormatExpression()
+        {
+            var (result, isMulti) = FormatTerm();
+            bool additive = false;
+            while (true)
+            {
+                SkipWhitespace();
+                char op = Peek();
+                if (op is not ('+' or '-'))
+                {
+                    return additive ? (result, false) : (result, isMulti);
+                }
+                _pos++;
+                if (!additive && isMulti)
+                {
+                    result = $"({result})"; // first term was a product; wrap it too
+                }
+                additive = true;
+                var (rhs, rhsMulti) = FormatTerm();
+                result += $" {(op == '+' ? '+' : '−')} {(rhsMulti ? $"({rhs})" : rhs)}";
+            }
+        }
+
+        private (string Text, bool IsMulti) FormatTerm()
+        {
+            string result = FormatFactor();
+            bool isMulti = false;
+            while (true)
+            {
+                SkipWhitespace();
+                char op = Peek();
+                if (op is not ('*' or '/'))
+                {
+                    return (result, isMulti);
+                }
+                _pos++;
+                isMulti = true;
+                result += $" {(op == '*' ? '×' : '÷')} {FormatFactor()}";
+            }
+        }
+
+        private string FormatFactor()
+        {
+            SkipWhitespace();
+            char c = Peek();
+            if (c == '(')
+            {
+                _pos++;
+                var (inner, _) = FormatExpression();
+                SkipWhitespace();
+                if (Peek() != ')')
+                {
+                    throw new FormatException("expected )");
+                }
+                _pos++;
+                return $"({inner})";
+            }
+            if (c == '-')
+            {
+                _pos++;
+                return "−" + FormatFactor();
+            }
+            if (c == '{')
+            {
+                int end = text.IndexOf('}', _pos);
+                if (end < 0)
+                {
+                    throw new FormatException("unterminated placeholder");
+                }
+                string name = text[(_pos + 1)..end];
+                _pos = end + 1;
+                return resolve(name);
+            }
+            int start = _pos;
+            while (_pos < text.Length && (char.IsAsciiDigit(text[_pos]) || text[_pos] == '.'))
+            {
+                _pos++;
+            }
+            if (_pos == start)
+            {
+                throw new FormatException($"unexpected character at {_pos}");
+            }
+            return text[start.._pos];
+        }
+
+        private char Peek() => _pos < text.Length ? text[_pos] : '\0';
+
+        private void SkipWhitespace()
+        {
+            while (_pos < text.Length && char.IsWhiteSpace(text[_pos]))
+            {
+                _pos++;
+            }
+        }
+    }
+
     /// <summary>Evaluates with the given item level; player attributes default to 1.</summary>
     public static bool TryEvaluate(string expression, int level, out double result)
     {

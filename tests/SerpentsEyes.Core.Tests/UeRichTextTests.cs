@@ -60,4 +60,23 @@ public class UeRichTextTests
         Assert.False(ScalingMath.TryEvaluate("3+*oops", 1, out _));
         Assert.False(ScalingMath.TryEvaluate("(1+2", 1, out _));
     }
+
+    [Theory]
+    [InlineData("1+2*{l}", "1 + (2 × Lv)")]
+    [InlineData("3+2*{l}", "3 + (2 × Lv)")]
+    [InlineData("2*{l}", "2 × Lv")]
+    [InlineData("2*{l}+1", "(2 × Lv) + 1")]
+    [InlineData("{p_fai}*(2+{l}*1)", "Faith × (2 + (Lv × 1))")]
+    [InlineData("2.5 + 0.75", "2.5 + 0.75")]
+    public void Formats_Formulas_With_Explicit_Grouping(string expr, string expected)
+    {
+        string? formatted = ScalingMath.TryFormat(expr, name =>
+            name.Equals("l", StringComparison.OrdinalIgnoreCase) ? "Lv"
+            : name == "p_fai" ? "Faith" : name);
+        Assert.Equal(expected, formatted);
+    }
+
+    [Fact]
+    public void Format_Returns_Null_For_Garbage()
+        => Assert.Null(ScalingMath.TryFormat("3+*oops", n => n));
 }

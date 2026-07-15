@@ -28,6 +28,10 @@
     { "name": "Aspect of the Serpent", "hint": "Post-boss event 'The Pink Sand': claim the Aspect", "source": "wiki" },
     { "tag": "Progression.Class.Summoner", "hint": "Take the Dreamcallers curse, then slay the Dreamcaller it spawns", "source": "game-files research" },
     { "name": "Temporary Relief", "hint": "Post-boss event 'The Plant'", "source": "wiki" },
-    { "name": "Sweet Nectar", "hint": "Post-boss event 'The Plant': pay 100 Blood", "source": "wiki" }
+    { "name": "Sweet Nectar", "hint": "Post-boss event 'The Plant': pay 100 Blood", "source": "wiki" },
+    { "name": "Oathbound Rapier", "hint": "Defeat Leirra, the Golden Rose", "source": "wiki (user)" },
+    { "name": "Sacrificial Daggers", "hint": "Progress the Vagabond's questline", "source": "wiki (user)" },
+    { "name": "Typhlotic Pair", "hint": "Defeat The Twins", "source": "wiki (user)" },
+    { "name": "Magnolian Thorn and Petal", "hint": "Explore the Sanguine Cathedral", "source": "wiki (user)" }
   ]
 }

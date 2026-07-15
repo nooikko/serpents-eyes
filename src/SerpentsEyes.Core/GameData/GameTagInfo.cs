@@ -12,6 +12,7 @@ public sealed record WeaponMastery(string Name, string Description, string RawDe
 public sealed record GameTagInfo(
     string Tag,
     string Category,
+    bool HasProgression,
     string? DisplayName,
     string? Description,
     string? RawDescription,

@@ -51,12 +51,22 @@ public sealed partial class DetailModel
         var info = card.Info;
         var god = info?.God is { } g ? TagDatabase.FindGod(g) : null;
 
-        string status = card.IsLocked ? "Locked"
-            : card.Value == 0 ? "Found, not yet completed"
-            : "Unlocked";
+        string status = card.State switch
+        {
+            CardState.Locked => "Locked",
+            CardState.AlwaysAvailable => "Always available",
+            _ when card.Value == 0 => "Found, not yet completed",
+            _ => "Unlocked",
+        };
         string? counter = card.Value is { } v && !card.IsLocked
             ? TagSemantics.CounterText(card.CategoryKey, card.Tag, v)
             : null;
+
+        // Only Blessings are mechanically god-gated (chosen at that god's statue).
+        // Elsewhere the god tag is a thematic family — it drives the card art.
+        string? godLine = god is null ? null
+            : card.CategoryKey == "Blessing" ? $"Blessed by {god.FullName}"
+            : $"Affinity · {GodCard.Capitalize(god.FullName)}";
 
         return new DetailModel
         {
@@ -70,7 +80,7 @@ public sealed partial class DetailModel
             Flavor = info?.Flavor,
             ScalingRows = BuildScalingRows(info?.RawDescription),
             Masteries = info?.Masteries ?? [],
-            GodLine = god is not null ? $"Blessed by {god.FullName}" : null,
+            GodLine = godLine,
             GodSymbol = IconStore.Get(god?.SymbolKey),
         };
     }
@@ -137,9 +147,16 @@ public sealed partial class DetailModel
         return rows;
     }
 
-    /// <summary>"3+2*{l}" → "3 + 2 × Lv"; "{p_fai}*(2+{l}*1)" → "Faith × (2 + Lv × 1)".</summary>
+    /// <summary>"3+2*{l}" → "3 + (2 × Lv)"; "{p_fai}*(2+{l}*1)" → "Faith × (2 + (Lv × 1))".</summary>
     internal static string PrettyFormula(string expression)
     {
+        string? formatted = ScalingMath.TryFormat(expression, ResolvePlaceholder);
+        if (formatted is not null)
+        {
+            return formatted;
+        }
+
+        // Unparseable formula: fall back to naive symbol substitution.
         string pretty = AttrPlaceholder().Replace(expression, m => AttrNames.GetValueOrDefault(m.Groups[1].Value, m.Groups[1].Value));
         pretty = pretty.Replace("{l}", "Lv").Replace("{L}", "Lv");
         pretty = pretty.Replace("*", " × ").Replace("+", " + ").Replace("/", " ÷ ");
@@ -148,6 +165,17 @@ public sealed partial class DetailModel
             pretty = pretty.Replace("  ", " ");
         }
         return pretty.Trim();
+    }
+
+    private static string ResolvePlaceholder(string name)
+    {
+        if (name.Equals("l", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Lv";
+        }
+        return name.StartsWith("p_", StringComparison.OrdinalIgnoreCase)
+            ? AttrNames.GetValueOrDefault(name[2..], name[2..])
+            : name;
     }
 
     private static string Trim(double value)

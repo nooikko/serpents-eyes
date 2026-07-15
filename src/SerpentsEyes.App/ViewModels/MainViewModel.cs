@@ -235,7 +235,9 @@ public sealed class MainViewModel : ViewModelBase
             int? total = null;
             if (DbByCategory.TryGetValue(key, out var known))
             {
-                total = known.Select(t => t.Tag).Union(owned, StringComparer.Ordinal).Count();
+                // The completion bar tracks unlockables only; base-pool items can't be missing.
+                total = known.Where(t => t.HasProgression).Select(t => t.Tag)
+                    .Union(owned, StringComparer.Ordinal).Count();
             }
             Categories.Add(new CategoryItem(key, Display.CategoryDisplay(key), owned.Count, total));
         }
@@ -321,20 +323,25 @@ public sealed class MainViewModel : ViewModelBase
     private IEnumerable<ItemCard> BuildCards(string category, Dictionary<string, int> ownedValues, string search)
     {
         var known = DbByCategory.GetValueOrDefault(category) ?? [];
-        var knownTags = known.Select(t => t.Tag).ToHashSet(StringComparer.Ordinal);
 
-        // Owned records first (including save-only tags the DB doesn't know), then locked content.
+        // Owned records (including save-only tags the DB doesn't know) and the
+        // always-available base pool sort together; locked unlockables go last.
         var owned = _profile!.Records
             .Where(r => r.Category == category)
-            .Select(r => MakeCard(r.FullTag, category, TagDatabase.Find(r.FullTag), r.Value))
-            .OrderBy(c => c.Name, StringComparer.Ordinal);
+            .Select(r => MakeCard(r.FullTag, category, TagDatabase.Find(r.FullTag), CardState.Unlocked, r.Value));
+
+        var available = known
+            .Where(t => !t.HasProgression)
+            .Select(t => MakeCard(t.Tag, category, t, CardState.AlwaysAvailable, null));
 
         var locked = known
-            .Where(t => !ownedValues.ContainsKey(t.Tag))
-            .Select(t => MakeCard(t.Tag, category, t, null))
-            .OrderBy(c => c.Name, StringComparer.Ordinal);
+            .Where(t => t.HasProgression && !ownedValues.ContainsKey(t.Tag))
+            .Select(t => MakeCard(t.Tag, category, t, CardState.Locked, null));
 
-        foreach (var card in owned.Concat(locked))
+        var cards = owned.Concat(available).OrderBy(c => c.Name, StringComparer.Ordinal)
+            .Concat(locked.OrderBy(c => c.Name, StringComparer.Ordinal));
+
+        foreach (var card in cards)
         {
             if (search.Length == 0
                 || card.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
@@ -345,11 +352,11 @@ public sealed class MainViewModel : ViewModelBase
         }
     }
 
-    private static ItemCard MakeCard(string tag, string category, GameTagInfo? info, int? value)
+    private static ItemCard MakeCard(string tag, string category, GameTagInfo? info, CardState state, int? value)
     {
         string leaf = tag.Split('.') is { Length: >= 3 } parts ? string.Join(" · ", parts[2..]) : tag;
         string name = info?.DisplayName ?? Display.Prettify(leaf);
-        return new ItemCard(tag, name, category, IconStore.Get(info?.IconKey), value is null, value, info);
+        return new ItemCard(tag, name, category, IconStore.Get(info?.IconKey), state, value, info);
     }
 
     private IEnumerable<GodCard> BuildGodCards()

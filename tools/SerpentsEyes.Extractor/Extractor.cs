@@ -12,6 +12,10 @@ internal static partial class Extractor
     [GeneratedRegex(@"^Progression\.(Class|Weapon|Blessing|Mushroom|Item|Utility|Curse)\.[A-Za-z0-9_.]+$")]
     private static partial Regex DefinitionTag();
 
+    /// <summary>Identity tags carried by ALL definition assets, including never-unlockable ones.</summary>
+    [GeneratedRegex(@"^Item\.(Seed|Weed|Tree|Blessing|Mushroom|Utility|Class|Curse)\.[A-Za-z0-9_.]+$")]
+    private static partial Regex ItemIdentityTag();
+
     [GeneratedRegex(@"^Gameplay\.Prayer\.([A-Za-z0-9]+)$")]
     private static partial Regex PrayerAffinity();
 
@@ -46,13 +50,46 @@ internal static partial class Extractor
     ];
 
     private sealed record AssetInfo(string BaseName, string RelPath, List<string> Tags,
-        Dictionary<string, string?> Keys, string? PrayerGod, string? IconPath);
+        List<string> ItemTags, Dictionary<string, string?> Keys, string? PrayerGod, string? IconPath)
+    {
+        /// <summary>
+        /// Grouping identity: the progression tag's (category, leaf) when present
+        /// (weapons rename between tag families, so progression wins), else the
+        /// Item.* identity, else a curse-card fallback from the asset name.
+        /// </summary>
+        public (string Category, string Leaf)? Identity()
+        {
+            if (Tags.Count > 0)
+            {
+                string[] parts = Tags[0].Split('.', 3);
+                return (parts[1], parts[2]);
+            }
+            if (ItemTags.Count > 0)
+            {
+                string[] parts = ItemTags[0].Split('.', 3);
+                return (MapItemCategory(parts[1]), parts[2]);
+            }
+            if (BaseName.StartsWith("CA_", StringComparison.Ordinal))
+            {
+                return ("Curse", BaseName[3..]);
+            }
+            return null;
+        }
+
+        private static string MapItemCategory(string itemCategory) => itemCategory switch
+        {
+            "Seed" or "Weed" => "Item",
+            "Tree" => "Weapon",
+            _ => itemCategory,
+        };
+    }
 
     internal sealed record MasteryEntry(string Name, string Description, string RawDescription);
 
-    internal sealed record TagEntry(string Tag, string Category, string? DisplayName, string? Description,
-        string? RawDescription, string? UnlockHint, string? Flavor, string? God, string? IconKey,
-        string? SymbolKey, List<MasteryEntry> Masteries, string[] InternalIds, string? IconPath, string? SymbolPath);
+    internal sealed record TagEntry(string Tag, string Category, bool HasProgression, string? DisplayName,
+        string? Description, string? RawDescription, string? UnlockHint, string? Flavor, string? God,
+        string? IconKey, string? SymbolKey, List<MasteryEntry> Masteries, string[] InternalIds,
+        string? IconPath, string? SymbolPath);
 
     internal sealed record GodEntry(string Key, string FullName, string? Lore, string? StatuePrompt,
         string? Themes, string? SymbolKey, bool HasStatue, string? SymbolPath);
@@ -76,38 +113,44 @@ internal static partial class Extractor
         // FText namespaces seen in definition assets; some don't have a matching table.
         tableNames.UnionWith(["Weapons", "Blessings", "Mushrooms", "Seeds", "Relics", "Utility", "Items", "Classes", "Curses", "WeaponUpgrades"]);
 
-        // 2. Definition assets.
+        // 2. Definition assets — ALL of them; items without a Progression tag are the
+        // always-available part of the catalog.
         var assets = new List<AssetInfo>();
         foreach (string uasset in EnumerateDefinitionAssets(contentRoot))
         {
             var asset = ReadAsset(contentRoot, uasset, tableNames);
-            if (asset.Tags.Count > 0)
+            if (asset.Identity() is not null)
             {
                 assets.Add(asset);
             }
         }
-        Console.WriteLine($"Definition assets carrying tags: {assets.Count}");
+        Console.WriteLine($"Definition assets: {assets.Count} " +
+            $"({assets.Count(a => a.Tags.Count > 0)} with progression tags)");
 
         // 3. Weapon masteries, grouped by tree family (Trees/<Family>/Upgrades is shared by variants).
         var masteriesByFamily = CollectMasteries(contentRoot, tableNames);
         Console.WriteLine($"Weapon families with masteries: {masteriesByFamily.Count} " +
             $"({masteriesByFamily.Sum(kv => kv.Value.Count)} masteries total)");
 
-        // 4. Group per tag, pick the best asset for names by prefix priority.
-        var byTag = new Dictionary<string, List<AssetInfo>>(StringComparer.Ordinal);
+        // 4. Group per identity (category, leaf), pick the best asset for names by prefix priority.
+        var byIdentity = new Dictionary<(string Category, string Leaf), List<AssetInfo>>();
         foreach (var asset in assets)
         {
-            foreach (string tag in asset.Tags)
-            {
-                (byTag.TryGetValue(tag, out var list) ? list : byTag[tag] = []).Add(asset);
-            }
+            var identity = asset.Identity()!.Value;
+            (byIdentity.TryGetValue(identity, out var list) ? list : byIdentity[identity] = []).Add(asset);
         }
 
         var entriesOut = new List<TagEntry>();
-        foreach (var (tag, carriers) in byTag.OrderBy(kv => kv.Key, StringComparer.Ordinal))
+        foreach (var (identity, carriers) in byIdentity.OrderBy(kv => kv.Key.Category, StringComparer.Ordinal)
+                     .ThenBy(kv => kv.Key.Leaf, StringComparer.Ordinal))
         {
             carriers.Sort((a, b) => PrefixRank(a.BaseName).CompareTo(PrefixRank(b.BaseName)));
-            string category = tag.Split('.')[1];
+            string category = identity.Category;
+            string? progressionTag = carriers.SelectMany(c => c.Tags)
+                .FirstOrDefault(t => t.StartsWith($"Progression.{category}.", StringComparison.Ordinal));
+            string tag = progressionTag
+                ?? carriers.SelectMany(c => c.ItemTags).FirstOrDefault()
+                ?? $"Item.Curse.{identity.Leaf}";
 
             string? name = null, rawDesc = null, unlock = null, flavor = null, god = null;
             string? iconPath = null, symbolPath = null;
@@ -145,8 +188,10 @@ internal static partial class Extractor
             }
 
             string[] internalIds = [.. carriers.Select(c => c.BaseName).Distinct(StringComparer.OrdinalIgnoreCase)];
-            entriesOut.Add(new TagEntry(tag, category, Clean(name), Clean(rawDesc), TrimRaw(rawDesc),
-                Clean(unlock), Clean(flavor), god, IconKey(iconPath), IconKey(symbolPath),
+            // Stat weeds and a few pool items carry no _name key; fall back to the tag leaf.
+            name ??= System.Text.RegularExpressions.Regex.Replace(identity.Leaf, "([a-z0-9])([A-Z])", "$1 $2");
+            entriesOut.Add(new TagEntry(tag, category, progressionTag is not null, Clean(name), Clean(rawDesc),
+                TrimRaw(rawDesc), Clean(unlock), Clean(flavor), god, IconKey(iconPath), IconKey(symbolPath),
                 masteries, internalIds, iconPath, symbolPath));
         }
 
@@ -164,10 +209,10 @@ internal static partial class Extractor
 
         foreach (var g in gods)
         {
-            entriesOut.Add(new TagEntry($"Progression.Prayer.{g.Key}", "Prayer",
+            entriesOut.Add(new TagEntry($"Progression.Prayer.{g.Key}", "Prayer", true,
                 $"Devotion · {Capitalize(g.FullName)}", g.Lore, null, null, null, g.Key,
                 g.SymbolKey, null, [], [], g.SymbolPath, null));
-            entriesOut.Add(new TagEntry($"Progression.KillsFor.{g.Key}", "KillsFor",
+            entriesOut.Add(new TagEntry($"Progression.KillsFor.{g.Key}", "KillsFor", true,
                 $"Boss kills for {g.FullName}", g.Lore, null, null, null, g.Key,
                 g.SymbolKey, null, [], [], g.SymbolPath, null));
         }
@@ -358,12 +403,17 @@ internal static partial class Extractor
         string relPath = Path.GetRelativePath(contentRoot, uassetPath).Replace('\\', '/');
 
         var tags = new List<string>();
+        var itemTags = new List<string>();
         string? prayerGod = null, iconPath = null;
         foreach (string s in UexpStrings.Scan(File.ReadAllBytes(uassetPath)))
         {
             if (DefinitionTag().IsMatch(s) && !tags.Contains(s))
             {
                 tags.Add(s);
+            }
+            if (ItemIdentityTag().IsMatch(s) && !itemTags.Contains(s))
+            {
+                itemTags.Add(s);
             }
             var prayer = PrayerAffinity().Match(s);
             if (prayer.Success)
@@ -382,7 +432,7 @@ internal static partial class Extractor
         {
             keys = ReadKeyValues(File.ReadAllBytes(uexpPath), namespaces);
         }
-        return new AssetInfo(baseName, relPath, tags, keys, prayerGod, iconPath);
+        return new AssetInfo(baseName, relPath, tags, itemTags, keys, prayerGod, iconPath);
     }
 
     /// <summary>
@@ -496,6 +546,7 @@ internal static partial class Extractor
         foreach (var e in entries)
         {
             sb.Append("        new(").Append(Lit(e.Tag)).Append(", ").Append(Lit(e.Category)).Append(", ")
+              .Append(e.HasProgression ? "true" : "false").Append(", ")
               .Append(Lit(e.DisplayName)).Append(", ").Append(Lit(e.Description)).Append(", ")
               .Append(Lit(e.RawDescription)).Append(", ").Append(Lit(e.UnlockHint)).Append(", ")
               .Append(Lit(e.Flavor)).Append(", ").Append(Lit(e.God)).Append(", ")
