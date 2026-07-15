@@ -1,5 +1,12 @@
 {
   "_source": "Curated from the Serpent's Gaze community wiki (https://serpents-gaze.fandom.com/, CC-BY-SA): 'In-level Interactables' and 'Post-Boss Interactions' pages, plus in-repo game-file research. Game-authored unlock strings always win over these.",
+  "_canonicalUntaggedWeaponsNote": "Weapon trees contain internal tier/cut variants with identical family masteries (e.g. Morningstar duplicates Mace of the Maiden). Only these untagged weapons are real, per the wiki's weapon roster; other untagged trees are dropped.",
+  "canonicalUntaggedWeapons": [
+    "The Aureate Curved Sword",
+    "Blades of the Desert Hunt",
+    "Horta's Antithesis",
+    "Mace of the Maiden"
+  ],
   "hints": [
     { "tag": "Progression.Mushroom.EarthenMight", "hint": "Post-boss event 'The Carver': answer Hardiness", "source": "wiki" },
     { "tag": "Progression.Mushroom.InnerTenacity", "hint": "Post-boss event 'The Hag': take the experimental mixture", "source": "wiki" },

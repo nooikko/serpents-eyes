@@ -334,6 +334,16 @@ internal static partial class Extractor
             hintsPath = Path.Combine(FindRepoRoot(), "tools", "SerpentsEyes.Extractor", "wiki_hints.json");
         }
         using var doc = JsonDocument.Parse(File.ReadAllText(hintsPath));
+
+        // Deduplicate weapons: untagged tree variants share their family's masteries
+        // and duplicate a real weapon; only the wiki-confirmed starters survive.
+        var canonicalUntagged = doc.RootElement.GetProperty("canonicalUntaggedWeapons")
+            .EnumerateArray().Select(e => e.GetString()!)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        int dropped = entries.RemoveAll(e =>
+            e is { Category: "Weapon", HasProgression: false }
+            && (e.DisplayName is null || !canonicalUntagged.Contains(e.DisplayName)));
+        Console.WriteLine($"Dropped {dropped} duplicate/internal weapon variants");
         var byTag = new Dictionary<string, string>(StringComparer.Ordinal);
         var byName = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var hint in doc.RootElement.GetProperty("hints").EnumerateArray())
