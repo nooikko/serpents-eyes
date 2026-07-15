@@ -68,20 +68,21 @@
             <Setter Property="Background" Value="{StaticResource Bg3}" />
         </Style>
 
-        <!-- Record list -->
-        <Style Selector="ListBox.records">
+        <!-- Content card grid -->
+        <Style Selector="ListBox.cards">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Padding" Value="0" />
         </Style>
-        <Style Selector="ListBox.records ListBoxItem">
-            <Setter Property="Padding" Value="14,0" />
-            <Setter Property="Margin" Value="0" />
-            <Setter Property="MinHeight" Value="40" />
+        <Style Selector="ListBox.cards ListBoxItem">
+            <Setter Property="Padding" Value="8" />
+            <Setter Property="Margin" Value="2" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="VerticalAlignment" Value="Top" />
         </Style>
-        <Style Selector="ListBox.records ListBoxItem:pointerover /template/ ContentPresenter">
+        <Style Selector="ListBox.cards ListBoxItem:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{StaticResource Bg2}" />
         </Style>
-        <Style Selector="ListBox.records ListBoxItem:selected /template/ ContentPresenter">
+        <Style Selector="ListBox.cards ListBoxItem:selected /template/ ContentPresenter">
             <Setter Property="Background" Value="{StaticResource Bg3}" />
         </Style>
 

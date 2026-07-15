@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace SerpentsEyes.Extractor;
@@ -25,15 +26,36 @@ internal static partial class Extractor
     [GeneratedRegex(@"</?[^<>]*>")]
     private static partial Regex RichTextMarkup();
 
+    [GeneratedRegex(@"^/Game/Textures/UI/")]
+    private static partial Regex UiTexturePath();
+
     /// <summary>Asset basename prefixes that are definition assets, in name-resolution priority order.</summary>
     private static readonly string[] PrefixPriority =
         ["Tree_", "Class_", "CA_", "Blessing_", "Mushroom_", "Seed_", "Utility_", "Weed_", "InventoryItem_"];
 
-    private static readonly string[] Gods =
-        ["Dream", "Heretic", "Keeper", "Matriarch", "Reflection", "Sael", "Tree"];
+    /// <summary>God tag key → (full in-game name, has a statue, community-wiki theme summary).</summary>
+    private static readonly (string Key, string FullName, bool HasStatue, string? Themes)[] GodsMeta =
+    [
+        ("Dream", "the Dream Thing", true, "On-hit, status and Relic-usage blessings"),
+        ("Heretic", "the Heretic", true, "Crit and Fire blessings"),
+        ("Keeper", "the Keeper of Eyes", true, null),
+        ("Matriarch", "the Weeping Matriarch", true, "Blood generation, Sanguine and Bleed blessings"),
+        ("Reflection", "the Reflection", true, "Buffing, Summons and Physical damage blessings"),
+        ("Tree", "Magnolia", true, "Support, Healing, Rot and Blight blessings"),
+        ("Sael", "Sael", false, null),
+    ];
 
     private sealed record AssetInfo(string BaseName, string RelPath, List<string> Tags,
-        Dictionary<string, string?> Keys, string? PrayerGod, List<string> OrderedStrings);
+        Dictionary<string, string?> Keys, string? PrayerGod, string? IconPath);
+
+    internal sealed record MasteryEntry(string Name, string Description, string RawDescription);
+
+    internal sealed record TagEntry(string Tag, string Category, string? DisplayName, string? Description,
+        string? RawDescription, string? UnlockHint, string? Flavor, string? God, string? IconKey,
+        string? SymbolKey, List<MasteryEntry> Masteries, string[] InternalIds, string? IconPath, string? SymbolPath);
+
+    internal sealed record GodEntry(string Key, string FullName, string? Lore, string? StatuePrompt,
+        string? Themes, string? SymbolKey, bool HasStatue, string? SymbolPath);
 
     public static int Run(string contentRoot)
     {
@@ -52,7 +74,7 @@ internal static partial class Extractor
         Console.WriteLine($"String tables: {tableEntries.Count} entries");
 
         // FText namespaces seen in definition assets; some don't have a matching table.
-        tableNames.UnionWith(["Weapons", "Blessings", "Mushrooms", "Seeds", "Relics", "Utility", "Items", "Classes", "Curses"]);
+        tableNames.UnionWith(["Weapons", "Blessings", "Mushrooms", "Seeds", "Relics", "Utility", "Items", "Classes", "Curses", "WeaponUpgrades"]);
 
         // 2. Definition assets.
         var assets = new List<AssetInfo>();
@@ -66,7 +88,12 @@ internal static partial class Extractor
         }
         Console.WriteLine($"Definition assets carrying tags: {assets.Count}");
 
-        // 3. Group per tag, pick the best asset for names by prefix priority.
+        // 3. Weapon masteries, grouped by tree family (Trees/<Family>/Upgrades is shared by variants).
+        var masteriesByFamily = CollectMasteries(contentRoot, tableNames);
+        Console.WriteLine($"Weapon families with masteries: {masteriesByFamily.Count} " +
+            $"({masteriesByFamily.Sum(kv => kv.Value.Count)} masteries total)");
+
+        // 4. Group per tag, pick the best asset for names by prefix priority.
         var byTag = new Dictionary<string, List<AssetInfo>>(StringComparer.Ordinal);
         foreach (var asset in assets)
         {
@@ -82,31 +109,73 @@ internal static partial class Extractor
             carriers.Sort((a, b) => PrefixRank(a.BaseName).CompareTo(PrefixRank(b.BaseName)));
             string category = tag.Split('.')[1];
 
-            string? name = null, desc = null, unlock = null, flavor = null, god = null;
+            string? name = null, rawDesc = null, unlock = null, flavor = null, god = null;
+            string? iconPath = null, symbolPath = null;
             foreach (var carrier in carriers)
             {
                 name ??= Resolve(carrier, tableEntries, "_name");
-                desc ??= Resolve(carrier, tableEntries, "_desc", "_description") ?? Resolve(carrier, tableEntries, "_passive");
+                rawDesc ??= Resolve(carrier, tableEntries, "_desc", "_description") ?? Resolve(carrier, tableEntries, "_passive");
                 unlock ??= Resolve(carrier, tableEntries, "_unlock");
                 flavor ??= carrier.Keys.GetValueOrDefault("__flavor");
                 god ??= carrier.PrayerGod;
+                if (carrier.IconPath is not null)
+                {
+                    // Class portraits live on Class_ carriers; InventoryItem_ carries the god symbol.
+                    if (carrier.BaseName.StartsWith("InventoryItem_Class_", StringComparison.Ordinal))
+                    {
+                        symbolPath ??= carrier.IconPath;
+                    }
+                    else
+                    {
+                        iconPath ??= carrier.IconPath;
+                    }
+                }
+            }
+            iconPath ??= symbolPath;
+
+            List<MasteryEntry> masteries = [];
+            if (category == "Weapon")
+            {
+                string? family = carriers.Select(c => FamilyOf(c.RelPath))
+                    .FirstOrDefault(f => f is not null && masteriesByFamily.ContainsKey(f));
+                if (family is not null)
+                {
+                    masteries = masteriesByFamily[family];
+                }
             }
 
             string[] internalIds = [.. carriers.Select(c => c.BaseName).Distinct(StringComparer.OrdinalIgnoreCase)];
-            entriesOut.Add(new TagEntry(tag, category, Clean(name), Clean(desc), Clean(unlock), Clean(flavor), god, internalIds));
+            entriesOut.Add(new TagEntry(tag, category, Clean(name), Clean(rawDesc), TrimRaw(rawDesc),
+                Clean(unlock), Clean(flavor), god, IconKey(iconPath), IconKey(symbolPath),
+                masteries, internalIds, iconPath, symbolPath));
         }
 
-        // 4. Synthetic entries for the gods (Prayer.* and KillsFor.* families).
-        foreach (string godName in Gods)
+        // 5. Gods table + synthetic Prayer/KillsFor entries.
+        var gods = new List<GodEntry>();
+        foreach (var (key, fullName, hasStatue, themes) in GodsMeta)
         {
-            string? lore = Clean(tableEntries.GetValueOrDefault($"{godName.ToLowerInvariant()}_lore"));
-            entriesOut.Add(new TagEntry($"Progression.Prayer.{godName}", "Prayer",
-                $"The {godName}", lore, null, null, godName, []));
-            entriesOut.Add(new TagEntry($"Progression.KillsFor.{godName}", "KillsFor",
-                $"Kills for the {godName}", lore, null, null, godName, []));
+            string lower = key.ToLowerInvariant();
+            string symbolFile = key == "Sael" ? "/Game/Textures/UI/Deities/saelicon" : $"/Game/Textures/UI/Deities/UI_HousesSymbol_{key}_01";
+            gods.Add(new GodEntry(key, fullName,
+                Clean(tableEntries.GetValueOrDefault($"{lower}_lore")),
+                Clean(tableEntries.GetValueOrDefault($"pray_{lower}")),
+                themes, IconKey(symbolFile), hasStatue, symbolFile));
         }
 
-        // 5. Map titles from the Levels table.
+        foreach (var g in gods)
+        {
+            entriesOut.Add(new TagEntry($"Progression.Prayer.{g.Key}", "Prayer",
+                $"Devotion · {Capitalize(g.FullName)}", g.Lore, null, null, null, g.Key,
+                g.SymbolKey, null, [], [], g.SymbolPath, null));
+            entriesOut.Add(new TagEntry($"Progression.KillsFor.{g.Key}", "KillsFor",
+                $"Boss kills for {g.FullName}", g.Lore, null, null, null, g.Key,
+                g.SymbolKey, null, [], [], g.SymbolPath, null));
+        }
+
+        // 6. Wiki-curated unlock hints (game-authored strings win).
+        ApplyWikiHints(ref entriesOut);
+
+        // 7. Map titles from the Levels table.
         var mapTitles = new List<(string Key, string Title)>();
         foreach (var (key, value) in tableEntries)
         {
@@ -118,32 +187,140 @@ internal static partial class Extractor
         }
         mapTitles.Sort((a, b) => string.CompareOrdinal(a.Key, b.Key));
 
-        // 6. Emit.
-        string generatedPath = Path.Combine(FindRepoRoot(), "src", "SerpentsEyes.Core", "GameData", "TagDatabase.g.cs");
-        File.WriteAllText(generatedPath, GenerateCSharp(entriesOut, mapTitles));
+        // 8. Blessing lock rules (real in-game strings).
+        var lockRules = new Dictionary<int, string>();
+        if (tableEntries.GetValueOrDefault("blessing_locked_1bosskill") is { } rule1) { lockRules[1] = rule1; }
+        if (tableEntries.GetValueOrDefault("blessing_locked_3bosskill") is { } rule3) { lockRules[3] = rule3; }
+
+        // 9. Emit.
+        string repoRoot = FindRepoRoot();
+        string generatedPath = Path.Combine(repoRoot, "src", "SerpentsEyes.Core", "GameData", "TagDatabase.g.cs");
+        File.WriteAllText(generatedPath, GenerateCSharp(entriesOut, mapTitles, gods, lockRules));
         Console.WriteLine($"Wrote {generatedPath}");
 
         string jsonPath = Path.Combine(WorkbenchReports, "tag_database.json");
-        File.WriteAllText(jsonPath, GenerateJson(entriesOut, mapTitles));
+        File.WriteAllText(jsonPath, GenerateJson(entriesOut, mapTitles, gods));
         Console.WriteLine($"Wrote {jsonPath}");
 
-        // 7. Summary.
-        Console.WriteLine($"\nTags: {entriesOut.Count} | maps: {mapTitles.Count}");
+        // Icon manifest for the --icons export step.
+        var iconPaths = entriesOut.SelectMany(e => new[] { e.IconPath, e.SymbolPath })
+            .Concat(gods.Select(g => g.SymbolPath))
+            .Where(p => p is not null).Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(p => p, StringComparer.Ordinal).ToList();
+        string manifestPath = Path.Combine(WorkbenchReports, "icon_manifest.json");
+        File.WriteAllText(manifestPath, JsonSerializer.Serialize(iconPaths, JsonOptions));
+        Console.WriteLine($"Wrote {manifestPath} ({iconPaths.Count} unique textures)");
+
+        // 10. Summary.
+        Console.WriteLine($"\nTags: {entriesOut.Count} | maps: {mapTitles.Count} | gods: {gods.Count}");
         foreach (var group in entriesOut.GroupBy(e => e.Category).OrderBy(g => g.Key))
         {
-            int named = group.Count(e => e.DisplayName is not null);
-            Console.WriteLine($"  {group.Key,-10} {group.Count(),3} tags, {named,3} named");
-        }
-        var unnamed = entriesOut.Where(e => e.DisplayName is null).ToList();
-        if (unnamed.Count > 0)
-        {
-            Console.WriteLine($"\nUnnamed tags ({unnamed.Count}):");
-            foreach (var e in unnamed)
-            {
-                Console.WriteLine($"  {e.Tag}  (assets: {string.Join(", ", e.InternalIds)})");
-            }
+            Console.WriteLine($"  {group.Key,-10} {group.Count(),3} tags | named {group.Count(e => e.DisplayName is not null),3}" +
+                $" | icons {group.Count(e => e.IconKey is not null),3} | hints {group.Count(e => e.UnlockHint is not null),3}");
         }
         return 0;
+    }
+
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        WriteIndented = true,
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+    };
+
+    private static Dictionary<string, List<MasteryEntry>> CollectMasteries(string contentRoot, HashSet<string> namespaces)
+    {
+        var result = new Dictionary<string, List<MasteryEntry>>(StringComparer.OrdinalIgnoreCase);
+        string treesRoot = Path.Combine(contentRoot, "GameplayAbilitySystem", "Trees");
+        foreach (string family in Directory.EnumerateDirectories(treesRoot).Select(Path.GetFileName).OfType<string>())
+        {
+            string upgrades = Path.Combine(treesRoot, family, "Upgrades");
+            if (!Directory.Exists(upgrades))
+            {
+                continue;
+            }
+            var list = new List<MasteryEntry>();
+            foreach (string uexp in Directory.EnumerateFiles(upgrades, "Upgrade_*.uexp", SearchOption.AllDirectories)
+                         .OrderBy(p => p, StringComparer.Ordinal))
+            {
+                var pairs = ReadKeyValues(File.ReadAllBytes(uexp), namespaces);
+                string? name = FirstWithSuffix(pairs, "_name");
+                string? desc = FirstWithSuffix(pairs, "_desc", "_description");
+                if (name is not null && desc is not null)
+                {
+                    list.Add(new MasteryEntry(Clean(name)!, Clean(desc)!, TrimRaw(desc)!));
+                }
+            }
+            if (list.Count > 0)
+            {
+                result[family] = list;
+            }
+        }
+        return result;
+    }
+
+    private static string? FirstWithSuffix(Dictionary<string, string?> pairs, params string[] suffixes)
+    {
+        foreach (string suffix in suffixes)
+        {
+            foreach (var key in pairs.Keys.Where(k => k.EndsWith(suffix, StringComparison.Ordinal)).OrderBy(k => k.Length))
+            {
+                if (!string.IsNullOrWhiteSpace(pairs[key]))
+                {
+                    return pairs[key];
+                }
+            }
+        }
+        return null;
+    }
+
+    /// <summary>"GameplayAbilitySystem/Trees/Mace/Weapon_Warhammer/Tree_Warhammer.uasset" → "Mace".</summary>
+    private static string? FamilyOf(string relPath)
+    {
+        string[] parts = relPath.Split('/');
+        int i = Array.IndexOf(parts, "Trees");
+        return i >= 0 && i + 1 < parts.Length ? parts[i + 1] : null;
+    }
+
+    private static void ApplyWikiHints(ref List<TagEntry> entries)
+    {
+        string hintsPath = Path.Combine(AppContext.BaseDirectory, "wiki_hints.json");
+        if (!File.Exists(hintsPath))
+        {
+            hintsPath = Path.Combine(FindRepoRoot(), "tools", "SerpentsEyes.Extractor", "wiki_hints.json");
+        }
+        using var doc = JsonDocument.Parse(File.ReadAllText(hintsPath));
+        var byTag = new Dictionary<string, string>(StringComparer.Ordinal);
+        var byName = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var hint in doc.RootElement.GetProperty("hints").EnumerateArray())
+        {
+            string text = hint.GetProperty("hint").GetString()!;
+            if (hint.TryGetProperty("tag", out var tag))
+            {
+                byTag[tag.GetString()!] = text;
+            }
+            else if (hint.TryGetProperty("name", out var name))
+            {
+                byName[name.GetString()!] = text;
+            }
+        }
+
+        int applied = 0;
+        for (int i = 0; i < entries.Count; i++)
+        {
+            var e = entries[i];
+            if (e.UnlockHint is not null)
+            {
+                continue; // game-authored strings win
+            }
+            string? hint = byTag.GetValueOrDefault(e.Tag)
+                ?? (e.DisplayName is not null ? byName.GetValueOrDefault(e.DisplayName) : null);
+            if (hint is not null)
+            {
+                entries[i] = e with { UnlockHint = hint };
+                applied++;
+            }
+        }
+        Console.WriteLine($"Wiki hints applied: {applied}");
     }
 
     private static IEnumerable<string> EnumerateDefinitionAssets(string contentRoot)
@@ -181,7 +358,7 @@ internal static partial class Extractor
         string relPath = Path.GetRelativePath(contentRoot, uassetPath).Replace('\\', '/');
 
         var tags = new List<string>();
-        string? prayerGod = null;
+        string? prayerGod = null, iconPath = null;
         foreach (string s in UexpStrings.Scan(File.ReadAllBytes(uassetPath)))
         {
             if (DefinitionTag().IsMatch(s) && !tags.Contains(s))
@@ -193,45 +370,57 @@ internal static partial class Extractor
             {
                 prayerGod = prayer.Groups[1].Value;
             }
+            if (iconPath is null && UiTexturePath().IsMatch(s))
+            {
+                iconPath = s;
+            }
         }
 
-        // The .uexp holds FText blobs as (namespace, key, inline value) — the value is
-        // absent when the text resolves through a string table at runtime.
         var keys = new Dictionary<string, string?>(StringComparer.Ordinal);
-        var ordered = new List<string>();
         string uexpPath = Path.ChangeExtension(uassetPath, ".uexp");
         if (File.Exists(uexpPath))
         {
-            ordered = UexpStrings.Scan(File.ReadAllBytes(uexpPath));
-            for (int i = 0; i < ordered.Count; i++)
+            keys = ReadKeyValues(File.ReadAllBytes(uexpPath), namespaces);
+        }
+        return new AssetInfo(baseName, relPath, tags, keys, prayerGod, iconPath);
+    }
+
+    /// <summary>
+    /// Extracts FText (namespace, key, inline value) triples from a .uexp string stream.
+    /// The value is absent when the text resolves through a string table at runtime.
+    /// </summary>
+    private static Dictionary<string, string?> ReadKeyValues(byte[] uexpBytes, HashSet<string> namespaces)
+    {
+        var keys = new Dictionary<string, string?>(StringComparer.Ordinal);
+        var ordered = UexpStrings.Scan(uexpBytes);
+        for (int i = 0; i < ordered.Count; i++)
+        {
+            string s = ordered[i];
+            if (!DisplayKey().IsMatch(s))
             {
-                string s = ordered[i];
-                if (!DisplayKey().IsMatch(s))
+                continue;
+            }
+            string? value = null;
+            if (i + 1 < ordered.Count)
+            {
+                string next = ordered[i + 1];
+                bool nextIsKey = DisplayKey().IsMatch(next);
+                bool nextIsNamespace = namespaces.Contains(next);
+                if (!nextIsKey && !nextIsNamespace)
                 {
-                    continue;
-                }
-                string? value = null;
-                if (i + 1 < ordered.Count)
-                {
-                    string next = ordered[i + 1];
-                    bool nextIsKey = DisplayKey().IsMatch(next);
-                    bool nextIsNamespace = namespaces.Contains(next);
-                    if (!nextIsKey && !nextIsNamespace)
+                    value = next;
+                    i++;
+                    // A quoted line straight after a description is flavor text.
+                    if (i + 1 < ordered.Count && ordered[i + 1].StartsWith('"') &&
+                        (s.EndsWith("_desc") || s.EndsWith("_description")))
                     {
-                        value = next;
-                        i++;
-                        // A quoted line straight after a description is flavor text.
-                        if (i + 1 < ordered.Count && ordered[i + 1].StartsWith('"') &&
-                            (s.EndsWith("_desc") || s.EndsWith("_description")))
-                        {
-                            keys["__flavor"] = ordered[++i].Trim('"');
-                        }
+                        keys["__flavor"] = ordered[++i].Trim('"');
                     }
                 }
-                keys[s] = value;
             }
+            keys[s] = value;
         }
-        return new AssetInfo(baseName, relPath, tags, keys, prayerGod, ordered);
+        return keys;
     }
 
     /// <summary>Finds the display text for a key suffix: string-table value wins, inline value is the fallback.</summary>
@@ -261,8 +450,23 @@ internal static partial class Extractor
         }
         string cleaned = RichTextMarkup().Replace(text, "");
         cleaned = cleaned.Replace("\r\n", "\n").Replace('\r', '\n').Trim();
+        while (cleaned.Contains("  "))
+        {
+            cleaned = cleaned.Replace("  ", " "); // stripped inline glyphs leave double spaces
+        }
         return cleaned.Length == 0 ? null : cleaned;
     }
+
+    /// <summary>Keeps UE markup intact; only normalizes line endings and trims.</summary>
+    private static string? TrimRaw(string? text)
+        => string.IsNullOrWhiteSpace(text) ? null : text.Replace("\r\n", "\n").Replace('\r', '\n').Trim();
+
+    /// <summary>"/Game/Textures/UI/Weapons/WeaponCards_Cinder_02" → "WeaponCards_Cinder_02".</summary>
+    private static string? IconKey(string? texturePath)
+        => texturePath is null ? null : texturePath[(texturePath.LastIndexOf('/') + 1)..];
+
+    private static string Capitalize(string s)
+        => s.Length > 0 && char.IsLower(s[0]) ? char.ToUpperInvariant(s[0]) + s[1..] : s;
 
     private static string FindRepoRoot()
     {
@@ -274,14 +478,13 @@ internal static partial class Extractor
         return dir ?? throw new InvalidOperationException("Could not locate repo root (SerpentsEyes.slnx)");
     }
 
-    internal sealed record TagEntry(string Tag, string Category, string? DisplayName, string? Description,
-        string? UnlockHint, string? Flavor, string? God, string[] InternalIds);
-
-    private static string GenerateCSharp(List<TagEntry> entries, List<(string Key, string Title)> mapTitles)
+    private static string GenerateCSharp(List<TagEntry> entries, List<(string Key, string Title)> mapTitles,
+        List<GodEntry> gods, Dictionary<int, string> lockRules)
     {
         var sb = new StringBuilder();
         sb.AppendLine("// <auto-generated>");
         sb.AppendLine("// Generated by tools/SerpentsEyes.Extractor from Serpent's Gaze game data.");
+        sb.AppendLine("// Unlock hints partly curated from https://serpents-gaze.fandom.com/ (CC-BY-SA).");
         sb.AppendLine("// Do not edit by hand — re-run the extractor instead.");
         sb.AppendLine("// </auto-generated>");
         sb.AppendLine("namespace SerpentsEyes.Core.GameData;");
@@ -294,11 +497,33 @@ internal static partial class Extractor
         {
             sb.Append("        new(").Append(Lit(e.Tag)).Append(", ").Append(Lit(e.Category)).Append(", ")
               .Append(Lit(e.DisplayName)).Append(", ").Append(Lit(e.Description)).Append(", ")
-              .Append(Lit(e.UnlockHint)).Append(", ").Append(Lit(e.Flavor)).Append(", ")
-              .Append(Lit(e.God)).Append(", [")
-              .Append(string.Join(", ", e.InternalIds.Select(Lit))).AppendLine("]),");
+              .Append(Lit(e.RawDescription)).Append(", ").Append(Lit(e.UnlockHint)).Append(", ")
+              .Append(Lit(e.Flavor)).Append(", ").Append(Lit(e.God)).Append(", ")
+              .Append(Lit(e.IconKey)).Append(", ").Append(Lit(e.SymbolKey)).Append(", [");
+            sb.Append(string.Join(", ", e.Masteries.Select(m =>
+                $"new WeaponMastery({Lit(m.Name)}, {Lit(m.Description)}, {Lit(m.RawDescription)})")));
+            sb.Append("], [").Append(string.Join(", ", e.InternalIds.Select(id => Lit(id)))).AppendLine("]),");
         }
         sb.AppendLine("    ];");
+        sb.AppendLine();
+        sb.AppendLine("    private static readonly GodInfo[] GodEntries =");
+        sb.AppendLine("    [");
+        foreach (var g in gods)
+        {
+            sb.Append("        new(").Append(Lit(g.Key)).Append(", ").Append(Lit(g.FullName)).Append(", ")
+              .Append(Lit(g.Lore)).Append(", ").Append(Lit(g.StatuePrompt)).Append(", ")
+              .Append(Lit(g.Themes)).Append(", ").Append(Lit(g.SymbolKey)).Append(", ")
+              .Append(g.HasStatue ? "true" : "false").AppendLine("),");
+        }
+        sb.AppendLine("    ];");
+        sb.AppendLine();
+        sb.AppendLine("    private static readonly Dictionary<int, string> BlessingLockRuleEntries = new()");
+        sb.AppendLine("    {");
+        foreach (var (kills, rule) in lockRules.OrderBy(kv => kv.Key))
+        {
+            sb.Append("        [").Append(kills).Append("] = ").Append(Lit(rule)).AppendLine(",");
+        }
+        sb.AppendLine("    };");
         sb.AppendLine();
         sb.AppendLine("    private static readonly (string Key, string Title)[] MapTitleEntries =");
         sb.AppendLine("    [");
@@ -311,20 +536,13 @@ internal static partial class Extractor
         return sb.ToString();
     }
 
-    private static string GenerateJson(List<TagEntry> entries, List<(string Key, string Title)> mapTitles)
-    {
-        var options = new System.Text.Json.JsonSerializerOptions
+    private static string GenerateJson(List<TagEntry> entries, List<(string Key, string Title)> mapTitles, List<GodEntry> gods)
+        => JsonSerializer.Serialize(new
         {
-            WriteIndented = true,
-            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
-        };
-        return System.Text.Json.JsonSerializer.Serialize(new
-        {
-            generated = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
             tags = entries,
+            gods,
             maps = mapTitles.Select(m => new { m.Key, m.Title }),
-        }, options);
-    }
+        }, JsonOptions);
 
     private static string Lit(string? s)
         => s is null

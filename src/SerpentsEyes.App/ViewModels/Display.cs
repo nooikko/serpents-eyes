@@ -22,7 +22,7 @@ public static partial class Display
     /// <summary>Save-file category key → the game's own vocabulary (mushrooms are "Callings", utilities are "Relics").</summary>
     public static string CategoryDisplay(string categoryKey) => categoryKey switch
     {
-        "Class" => "Classes",
+        "Class" => "Aspects",
         "Weapon" => "Weapons",
         "Item" => "Seeds",
         "Blessing" => "Blessings",
@@ -40,12 +40,14 @@ public static partial class Display
         _ => Prettify(categoryKey),
     };
 
-    /// <summary>Singular label for a loadout chip, in game vocabulary.</summary>
+    /// <summary>Singular label for a loadout chip or detail header, in game vocabulary.</summary>
     public static string CategorySingular(string categoryKey) => categoryKey switch
     {
+        "Class" => "Aspect",
         "Item" => "Seed",
         "Mushroom" => "Calling",
         "Utility" => "Relic",
+        "Kill" => "Boss",
         _ => Prettify(categoryKey),
     };
 }
@@ -69,14 +71,6 @@ public sealed record CategoryItem(string Key, string DisplayName, int Owned, int
     public double ProgressValue => Owned;
 }
 
-/// <summary>One row in the record table; locked rows are known content absent from the save.</summary>
-public sealed record RecordRow(
-    string DisplayName, string RawTag, string CategoryName, int Value, string Tooltip,
-    bool IsLocked = false, string? UnlockHint = null)
-{
-    public bool HasUnlockHint => UnlockHint is not null;
-    public double NameOpacity => IsLocked ? 0.45 : 1.0;
-}
 
 /// <summary>One equipped-loadout chip in the run snapshot card.</summary>
 public sealed record LoadoutChip(string Kind, string Name);

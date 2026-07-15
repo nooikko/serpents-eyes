@@ -1,8 +1,16 @@
 # Serpent's Eyes
 
-A save-file viewer for **Serpent's Gaze**. Reads the game's `.sav` profiles and shows
-progression (classes, weapons, blessings, quests, kills…) plus a snapshot of the run
-in progress, in a dark desktop UI with custom window chrome.
+A collection browser for **Serpent's Gaze**. Reads the game's `.sav` profiles and shows
+your progression as a card gallery with the game's real art — Aspects, Weapons (with
+Weapon Masteries), Seeds, Blessings, Callings, Relics, Curses, and the seven Divinities —
+plus a snapshot of the run in progress. Locked content appears greyed with unlock hints;
+counters are translated into meaning ("Obtained ×4", "45 boss kills while blessed")
+rather than raw numbers. Scaling formulas from item descriptions are rendered readably
+with computed per-level values.
+
+Unlock hints are partly curated from the [Serpent's Gaze community wiki]
+(https://serpents-gaze.fandom.com/) (CC-BY-SA); everything else comes from the game's
+own files.
 
 Built as two pieces so others can build on it:
 
@@ -63,11 +71,20 @@ TagDatabase.FindByInternalId("Tree_Warhammer")?.DisplayName;       // "Gatekeepe
 TagDatabase.MapTitle("Majin_HolyCity");                            // "Namah, City of Pilgrims"
 ```
 
+Also in Core: `TagSemantics` (counter → meaning: Unlocked/InProgress/Locked, human
+counter text), `TagDatabase.Gods` (the seven Divinities with real names, lore, statue
+prompts, and the in-game blessing lock rules), `UeRichText.Parse` (the game's rich-text
+markup → typed segments) and `ScalingMath.TryEvaluate` (`3+2*{l}` formulas).
+
 `TagDatabase.g.cs` is generated — do not edit it. To regenerate after a game update:
 
 ```
 dotnet run --project tools/SerpentsEyes.Extractor [-- <path-to-Content-root>]
+dotnet run --project tools/SerpentsEyes.Extractor -- --icons   # re-export PNG icons
 ```
+
+The `--icons` step decodes the game's cooked UI textures directly (PF_B8G8R8A8 inline
+and DXT1/5 + .ubulk) into `src/SerpentsEyes.App/Assets/Icons/` — no .usmap needed.
 
 The extractor expects an unpacked game at
 `C:\Users\elija\Documents\serpents_gaze_workbench\extracted\legacy\NinjaGarden\Content`

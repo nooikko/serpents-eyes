@@ -22,7 +22,7 @@ public class TagDatabaseTests
     [InlineData("Progression.Mushroom.Dexterity", "Finger-Focused Technique")]
     [InlineData("Progression.Curse.HordeCaller", "Dreamcallers")]
     [InlineData("Progression.Curse.Jester", "The Jester")]
-    [InlineData("Progression.Prayer.Matriarch", "The Matriarch")]
+    [InlineData("Progression.Prayer.Matriarch", "Devotion · The Weeping Matriarch")]
     public void Known_Tags_Resolve_To_Ingame_Names(string tag, string expectedName)
     {
         Assert.True(TagDatabase.TryGet(tag, out var info), $"Tag {tag} missing from database");

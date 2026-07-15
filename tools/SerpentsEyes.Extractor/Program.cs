@@ -16,4 +16,9 @@ if (args.Contains("--probe"))
     return 0;
 }
 
+if (args.Contains("--icons"))
+{
+    return IconExporter.Run(contentRoot);
+}
+
 return Extractor.Run(contentRoot);

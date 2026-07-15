@@ -3,11 +3,13 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:SerpentsEyes.App.ViewModels"
-        mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="720"
+        xmlns:controls="using:SerpentsEyes.App.Controls"
+        xmlns:gd="using:SerpentsEyes.Core.GameData"
+        mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="800"
         x:Class="SerpentsEyes.App.MainWindow"
         x:DataType="vm:MainViewModel"
         Title="Serpent's Eyes"
-        Width="1100" Height="720" MinWidth="820" MinHeight="520"
+        Width="1280" Height="800" MinWidth="980" MinHeight="600"
         Background="{StaticResource Bg0}"
         ExtendClientAreaToDecorationsHint="True"
         WindowDecorations="None">
@@ -15,11 +17,10 @@
     <Grid RowDefinitions="36,*">
 
         <!-- ═══ Custom title bar ═══ -->
-        <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*,Auto"
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,Auto,*,Auto"
               Background="{StaticResource Bg1}"
               WindowDecorationProperties.ElementRole="TitleBar">
 
-            <!-- Serpent-eye mark + wordmark -->
             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="9" Margin="14,0,18,0"
                         VerticalAlignment="Center">
                 <Canvas Width="20" Height="12" VerticalAlignment="Center">
@@ -33,7 +34,6 @@
                            VerticalAlignment="Center" />
             </StackPanel>
 
-            <!-- Profile picker lives in the title bar, like a channel switcher -->
             <ComboBox Grid.Column="1" MinWidth="170" VerticalAlignment="Center"
                       FontSize="12" Padding="10,4"
                       WindowDecorationProperties.ElementRole="User"
@@ -41,7 +41,7 @@
                       ItemsSource="{Binding Profiles}"
                       SelectedItem="{Binding SelectedProfile}" />
 
-            <Button Grid.Column="2" HorizontalAlignment="Left" VerticalAlignment="Center"
+            <Button Grid.Column="2" VerticalAlignment="Center"
                     Margin="8,0" Padding="10,4" FontSize="12"
                     WindowDecorationProperties.ElementRole="User"
                     Background="Transparent" Foreground="{StaticResource TextMuted}"
@@ -49,8 +49,11 @@
                 ⟳ Reload
             </Button>
 
-            <!-- Caption buttons -->
-            <StackPanel Grid.Column="3" Orientation="Horizontal">
+            <TextBlock Grid.Column="3" Text="{Binding FileInfoText}" HorizontalAlignment="Right"
+                       Margin="0,0,14,0" FontSize="11" Foreground="{StaticResource TextMuted}"
+                       VerticalAlignment="Center" />
+
+            <StackPanel Grid.Column="4" Orientation="Horizontal">
                 <Button Classes="caption" WindowDecorationProperties.ElementRole="MinimizeButton"
                         Click="Minimize_Click" FontSize="12">🗕</Button>
                 <Button Classes="caption" WindowDecorationProperties.ElementRole="MaximizeButton"
@@ -60,12 +63,12 @@
             </StackPanel>
         </Grid>
 
-        <!-- ═══ Body ═══ -->
-        <Grid Grid.Row="1" ColumnDefinitions="230,*">
+        <!-- ═══ Body: sidebar | card grid | detail pane ═══ -->
+        <Grid Grid.Row="1" ColumnDefinitions="216,*,320">
 
             <!-- Sidebar -->
             <Grid Grid.Column="0" RowDefinitions="Auto,*,Auto" Background="{StaticResource Bg1}">
-                <TextBlock Grid.Row="0" Text="PROGRESSION" Margin="18,16,18,8"
+                <TextBlock Grid.Row="0" Text="COLLECTION" Margin="18,16,18,8"
                            FontSize="10.5" LetterSpacing="1.6"
                            Foreground="{StaticResource GoldDim}" />
 
@@ -129,66 +132,211 @@
                 </Border>
             </Grid>
 
-            <!-- Main pane -->
-            <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto">
+            <!-- Card grid -->
+            <Grid Grid.Column="1" RowDefinitions="Auto,*">
+                <TextBox Grid.Row="0" Classes="search" PlaceholderText="Search everything…"
+                         Text="{Binding SearchText}" Margin="18,14,18,10"
+                         MaxWidth="420" HorizontalAlignment="Left" />
 
-                <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="18,14,18,10">
-                    <TextBox Grid.Column="0" Classes="search" PlaceholderText="Search tags…"
-                             Text="{Binding SearchText}" MaxWidth="420" HorizontalAlignment="Left" />
-                    <TextBlock Grid.Column="1" Text="{Binding FileInfoText}"
-                               FontSize="11" Foreground="{StaticResource TextMuted}"
-                               VerticalAlignment="Center" />
-                </Grid>
-
-                <!-- Status / empty state -->
                 <TextBlock Grid.Row="1" IsVisible="{Binding HasStatus}"
                            Text="{Binding StatusMessage}"
                            Margin="40" MaxWidth="480" TextWrapping="Wrap"
                            HorizontalAlignment="Center" VerticalAlignment="Center"
                            Foreground="{StaticResource TextMuted}" />
 
-                <!-- Record table -->
-                <ListBox Grid.Row="1" Classes="records" Margin="10,0"
+                <ListBox Grid.Row="1" Classes="cards" Margin="12,0,12,12"
                          IsVisible="{Binding !HasStatus}"
-                         ItemsSource="{Binding FilteredRecords}">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate x:DataType="vm:RecordRow">
-                            <Grid ColumnDefinitions="130,*,Auto" ToolTip.Tip="{Binding Tooltip}">
-                                <TextBlock Grid.Column="0" Text="{Binding CategoryName}"
-                                           FontSize="11" Foreground="{StaticResource TextMuted}"
-                                           VerticalAlignment="Center" />
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                    <TextBlock Classes="rowname" Text="{Binding DisplayName}"
-                                               FontSize="13" Foreground="{StaticResource Text}"
-                                               Opacity="{Binding NameOpacity}"
-                                               TextTrimming="CharacterEllipsis" />
-                                    <TextBlock IsVisible="{Binding HasUnlockHint}"
-                                               Text="{Binding UnlockHint}"
-                                               FontSize="11" FontStyle="Italic"
-                                               Foreground="{StaticResource GoldDim}"
-                                               TextTrimming="CharacterEllipsis" />
-                                </StackPanel>
-                                <Border Grid.Column="2" MinWidth="34" Padding="8,2"
-                                        IsVisible="{Binding !IsLocked}"
-                                        Background="{StaticResource Bg3}" CornerRadius="10"
-                                        VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Value}" FontSize="11.5"
-                                               FontFamily="{StaticResource MonoFont}"
-                                               Foreground="{StaticResource Gold}"
-                                               HorizontalAlignment="Center" />
+                         ItemsSource="{Binding Items}"
+                         SelectedItem="{Binding SelectedItem}">
+                    <ListBox.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    <ListBox.DataTemplates>
+                        <DataTemplate DataType="vm:ItemCard">
+                            <StackPanel Width="128" Spacing="7" Opacity="{Binding CardOpacity}">
+                                <Border Height="118" CornerRadius="8" ClipToBounds="True"
+                                        Background="{StaticResource Bg2}">
+                                    <Panel>
+                                        <Image Source="{Binding Icon}" Stretch="Uniform" Margin="8"
+                                               IsVisible="{Binding HasIcon}" />
+                                        <Canvas Width="34" Height="20" VerticalAlignment="Center"
+                                                HorizontalAlignment="Center" IsVisible="{Binding !HasIcon}">
+                                            <Path Stroke="{StaticResource GoldDim}" StrokeThickness="1.6"
+                                                  Data="M 2,10 Q 17,-4 32,10 Q 17,24 2,10 Z" />
+                                            <Ellipse Canvas.Left="14" Canvas.Top="4" Width="6" Height="13"
+                                                     Fill="{StaticResource GoldDim}" />
+                                        </Canvas>
+                                    </Panel>
                                 </Border>
-                                <TextBlock Grid.Column="2" IsVisible="{Binding IsLocked}"
-                                           Text="🔒" FontSize="12" Opacity="0.55"
-                                           VerticalAlignment="Center" HorizontalAlignment="Center" />
-                            </Grid>
+                                <TextBlock Text="{Binding Name}" FontSize="12" TextWrapping="Wrap"
+                                           TextAlignment="Center" MaxHeight="34"
+                                           Foreground="{StaticResource Text}" />
+                            </StackPanel>
                         </DataTemplate>
-                    </ListBox.ItemTemplate>
+                        <DataTemplate DataType="vm:GodCard">
+                            <StackPanel Width="128" Spacing="7" Opacity="{Binding CardOpacity}">
+                                <Border Height="118" CornerRadius="8" ClipToBounds="True"
+                                        Background="{StaticResource Bg2}">
+                                    <Image Source="{Binding Symbol}" Stretch="Uniform" Margin="22" />
+                                </Border>
+                                <TextBlock Text="{Binding Name}" FontSize="12" TextWrapping="Wrap"
+                                           TextAlignment="Center"
+                                           Foreground="{StaticResource Text}" />
+                                <TextBlock Text="{Binding StatsLine}" FontSize="10" TextAlignment="Center"
+                                           Foreground="{StaticResource TextMuted}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.DataTemplates>
                 </ListBox>
-
-                <TextBlock Grid.Row="2" Margin="18,8,18,12" FontSize="11"
-                           Foreground="{StaticResource TextMuted}"
-                           Text="{Binding CompletionText}" />
             </Grid>
+
+            <!-- Detail pane -->
+            <Border Grid.Column="2" Background="{StaticResource Bg1}"
+                    BorderBrush="{StaticResource Stroke}" BorderThickness="1,0,0,0">
+                <Panel>
+                    <TextBlock Text="Select something to inspect it"
+                               IsVisible="{Binding !HasDetail}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               FontSize="12" Foreground="{StaticResource TextMuted}" />
+
+                    <ScrollViewer IsVisible="{Binding HasDetail}">
+                        <StackPanel Margin="20,18" Spacing="12"
+                                    DataContext="{Binding Detail}"
+                                    x:DataType="vm:DetailModel">
+
+                            <Border Height="170" CornerRadius="10" ClipToBounds="True"
+                                    Background="{StaticResource Bg2}">
+                                <Image Source="{Binding Icon}" Stretch="Uniform" Margin="10" />
+                            </Border>
+
+                            <StackPanel Spacing="3">
+                                <TextBlock Text="{Binding CategoryLabel}" FontSize="10.5" LetterSpacing="1.4"
+                                           Foreground="{StaticResource GoldDim}" />
+                                <TextBlock Text="{Binding Name}" FontFamily="{StaticResource DisplayFont}"
+                                           FontSize="20" TextWrapping="Wrap"
+                                           Foreground="{StaticResource Text}" />
+                                <StackPanel Orientation="Horizontal" Spacing="6"
+                                            IsVisible="{Binding GodLine, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                    <Image Source="{Binding GodSymbol}" Width="16" Height="16" />
+                                    <TextBlock Text="{Binding GodLine}" FontSize="12"
+                                               Foreground="{StaticResource Gold}" />
+                                </StackPanel>
+                            </StackPanel>
+
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="{Binding StatusText}" FontSize="12.5"
+                                           Foreground="{StaticResource Text}" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding CounterText}" FontSize="11.5"
+                                           IsVisible="{Binding CounterText, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                           Foreground="{StaticResource TextMuted}" />
+                                <TextBlock Text="{Binding UnlockHint}" FontSize="11.5" TextWrapping="Wrap"
+                                           IsVisible="{Binding UnlockHint, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                           FontStyle="Italic" Foreground="{StaticResource Gold}" />
+                            </StackPanel>
+
+                            <controls:RichTextPresenter RawText="{Binding RawDescription}"
+                                    IsVisible="{Binding RawDescription, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                    FontSize="12.5" TextWrapping="Wrap" LineHeight="19"
+                                    Foreground="{StaticResource Text}" />
+
+                            <TextBlock Text="{Binding Flavor}" FontSize="12" TextWrapping="Wrap"
+                                       IsVisible="{Binding Flavor, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                       FontStyle="Italic" FontFamily="{StaticResource DisplayFont}"
+                                       Foreground="{StaticResource TextMuted}" />
+
+                            <!-- Scaling -->
+                            <StackPanel Spacing="6" IsVisible="{Binding HasScaling}">
+                                <TextBlock Text="SCALING" FontSize="10" LetterSpacing="1.6"
+                                           Foreground="{StaticResource GoldDim}" />
+                                <ItemsControl ItemsSource="{Binding ScalingRows}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:ScalingRow">
+                                            <StackPanel Spacing="2" Margin="0,0,0,6">
+                                                <TextBlock Text="{Binding Formula}" FontSize="12"
+                                                           FontFamily="{StaticResource MonoFont}"
+                                                           Foreground="{StaticResource Gold}" />
+                                                <TextBlock Text="{Binding LevelValues}" FontSize="11"
+                                                           IsVisible="{Binding LevelValues, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                                           FontFamily="{StaticResource MonoFont}"
+                                                           Foreground="{StaticResource TextMuted}" />
+                                                <TextBlock Text="{Binding Note}" FontSize="11"
+                                                           IsVisible="{Binding Note, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                                           Foreground="{StaticResource TextMuted}" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
+                            <!-- Weapon Masteries -->
+                            <StackPanel Spacing="6" IsVisible="{Binding HasMasteries}">
+                                <TextBlock Text="WEAPON MASTERIES" FontSize="10" LetterSpacing="1.6"
+                                           Foreground="{StaticResource GoldDim}" />
+                                <ItemsControl ItemsSource="{Binding Masteries}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="gd:WeaponMastery">
+                                            <StackPanel Spacing="1" Margin="0,0,0,7">
+                                                <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold"
+                                                           Foreground="{StaticResource Text}" />
+                                                <controls:RichTextPresenter RawText="{Binding RawDescription}"
+                                                        FontSize="11.5" TextWrapping="Wrap"
+                                                        Foreground="{StaticResource TextMuted}" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
+                            <!-- God-only sections -->
+                            <StackPanel Spacing="10" IsVisible="{Binding IsGod}">
+                                <TextBlock Text="{Binding Themes}" FontSize="12" TextWrapping="Wrap"
+                                           IsVisible="{Binding Themes, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                           Foreground="{StaticResource Text}" />
+                                <TextBlock Text="{Binding Lore}" FontSize="12" TextWrapping="Wrap"
+                                           IsVisible="{Binding Lore, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                           FontStyle="Italic" FontFamily="{StaticResource DisplayFont}"
+                                           Foreground="{StaticResource TextMuted}" />
+                                <TextBlock Text="{Binding StatuePrompt}" FontSize="11.5" TextWrapping="Wrap"
+                                           IsVisible="{Binding StatuePrompt, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                           Foreground="{StaticResource TextMuted}" />
+
+                                <ItemsControl ItemsSource="{Binding LockRules}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:LockRuleRow">
+                                            <Grid ColumnDefinitions="20,*" Margin="0,1">
+                                                <TextBlock Grid.Column="0" Text="{Binding Mark}" FontSize="12"
+                                                           Foreground="{StaticResource Gold}" />
+                                                <TextBlock Grid.Column="1" Text="{Binding Rule}" FontSize="11.5"
+                                                           TextWrapping="Wrap"
+                                                           Foreground="{StaticResource Text}" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <StackPanel Spacing="4" IsVisible="{Binding HasBlessings}">
+                                    <TextBlock Text="BLESSINGS" FontSize="10" LetterSpacing="1.6"
+                                               Foreground="{StaticResource GoldDim}" />
+                                    <ItemsControl ItemsSource="{Binding Blessings}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:GodBlessingRow">
+                                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,1">
+                                                    <TextBlock Text="{Binding Dot}" FontSize="10"
+                                                               Foreground="{StaticResource Gold}" VerticalAlignment="Center" />
+                                                    <TextBlock Text="{Binding Name}" FontSize="11.5"
+                                                               Foreground="{StaticResource Text}" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Panel>
+            </Border>
         </Grid>
     </Grid>
 </Window>

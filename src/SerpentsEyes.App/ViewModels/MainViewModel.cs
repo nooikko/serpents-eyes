@@ -4,7 +4,6 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Text;
 using SerpentsEyes.Core;
 using SerpentsEyes.Core.GameData;
 
@@ -12,14 +11,17 @@ namespace SerpentsEyes.App.ViewModels;
 
 public sealed class MainViewModel : ViewModelBase
 {
-    public const string AllCategoriesKey = "*";
+    public const string DivinitiesKey = "@Divinities";
 
-    /// <summary>Sidebar ordering; categories not listed here go to the end alphabetically.</summary>
+    /// <summary>Sidebar ordering. Meta is API-only; Prayer/KillsFor fold into Divinities.</summary>
     private static readonly string[] CategoryOrder =
     [
-        "Meta", "Class", "Weapon", "Item", "Blessing", "Mushroom", "Prayer",
-        "KillsFor", "Kill", "Curse", "Quest", "Shortcut", "Location", "Emotes", "Utility",
+        "Class", "Weapon", "Item", "Blessing", "Mushroom", "Utility", "Curse",
+        DivinitiesKey, "Quest", "Shortcut", "Kill", "Location", "Emotes",
     ];
+
+    private static readonly HashSet<string> HiddenCategories =
+        new(["Meta", "Prayer", "KillsFor"], StringComparer.Ordinal);
 
     /// <summary>Game-data tags grouped by category — the "everything that exists" side of completion.</summary>
     private static readonly Dictionary<string, List<GameTagInfo>> DbByCategory =
@@ -29,13 +31,14 @@ public sealed class MainViewModel : ViewModelBase
     private SaveProfile? _profile;
     private ProfileChoice? _selectedProfile;
     private CategoryItem? _selectedCategory;
+    private object? _selectedItem;
+    private DetailModel? _detail;
     private string _searchText = string.Empty;
     private string? _statusMessage;
     private bool _hasRun;
     private string _mapName = string.Empty;
     private string _positionText = string.Empty;
     private string _fileInfoText = string.Empty;
-    private string _completionText = string.Empty;
 
     public MainViewModel()
     {
@@ -44,7 +47,7 @@ public sealed class MainViewModel : ViewModelBase
 
     public ObservableCollection<ProfileChoice> Profiles { get; } = [];
     public ObservableCollection<CategoryItem> Categories { get; } = [];
-    public ObservableCollection<RecordRow> FilteredRecords { get; } = [];
+    public ObservableCollection<object> Items { get; } = [];
     public ObservableCollection<LoadoutChip> Loadout { get; } = [];
 
     public ProfileChoice? SelectedProfile
@@ -66,10 +69,42 @@ public sealed class MainViewModel : ViewModelBase
         {
             if (SetField(ref _selectedCategory, value))
             {
-                RefreshRecords();
+                RefreshItems();
             }
         }
     }
+
+    /// <summary>The selected card (ItemCard or GodCard); drives the detail pane.</summary>
+    public object? SelectedItem
+    {
+        get => _selectedItem;
+        set
+        {
+            if (SetField(ref _selectedItem, value))
+            {
+                Detail = value switch
+                {
+                    ItemCard card => DetailModel.ForItem(card, _profile),
+                    GodCard card => DetailModel.ForGod(card, _profile),
+                    _ => null,
+                };
+            }
+        }
+    }
+
+    public DetailModel? Detail
+    {
+        get => _detail;
+        private set
+        {
+            if (SetField(ref _detail, value))
+            {
+                OnPropertyChanged(nameof(HasDetail));
+            }
+        }
+    }
+
+    public bool HasDetail => _detail is not null;
 
     public string SearchText
     {
@@ -78,12 +113,11 @@ public sealed class MainViewModel : ViewModelBase
         {
             if (SetField(ref _searchText, value))
             {
-                RefreshRecords();
+                RefreshItems();
             }
         }
     }
 
-    /// <summary>Error or empty-state text; null when a profile is loaded and healthy.</summary>
     public string? StatusMessage
     {
         get => _statusMessage;
@@ -97,9 +131,6 @@ public sealed class MainViewModel : ViewModelBase
     }
 
     public bool HasStatus => _statusMessage is not null;
-
-    /// <summary>Footer summary for the selected category, e.g. "19 of 26 Callings unlocked".</summary>
-    public string CompletionText { get => _completionText; private set => SetField(ref _completionText, value); }
 
     public bool HasRun { get => _hasRun; private set => SetField(ref _hasRun, value); }
     public string MapName { get => _mapName; private set => SetField(ref _mapName, value); }
@@ -125,6 +156,12 @@ public sealed class MainViewModel : ViewModelBase
             Profiles.FirstOrDefault(p => p.Path == previous)
             ?? Profiles.FirstOrDefault(p => p.DisplayName.Equals("profile_0", StringComparison.OrdinalIgnoreCase))
             ?? Profiles[0];
+
+        // Force a reload even when the selection object did not change.
+        if (_selectedProfile is not null)
+        {
+            LoadProfile(_selectedProfile.Path);
+        }
     }
 
     public void OpenFile(string path)
@@ -157,7 +194,7 @@ public sealed class MainViewModel : ViewModelBase
 
         RebuildCategories();
         RefreshSnapshot();
-        RefreshRecords();
+        RefreshItems();
     }
 
     private void RebuildCategories()
@@ -176,40 +213,42 @@ public sealed class MainViewModel : ViewModelBase
             .ToDictionary(g => g.Key, g => g.Select(r => r.FullTag).ToHashSet(StringComparer.Ordinal));
 
         var categoryKeys = ownedByCategory.Keys.Union(DbByCategory.Keys, StringComparer.Ordinal)
+            .Where(k => !HiddenCategories.Contains(k))
+            .Append(DivinitiesKey)
+            .Distinct()
             .OrderBy(k => { int i = Array.IndexOf(CategoryOrder, k); return i < 0 ? int.MaxValue : i; })
             .ThenBy(k => k, StringComparer.Ordinal)
             .ToList();
 
-        int allOwned = _profile.Records.Count, allTotal = 0;
-        var items = new List<CategoryItem>();
         foreach (string key in categoryKeys)
         {
+            if (key == DivinitiesKey)
+            {
+                int touched = TagDatabase.Gods.Count(g =>
+                    ownedByCategory.GetValueOrDefault("Prayer")?.Contains($"Progression.Prayer.{g.Key}") == true
+                    || ownedByCategory.GetValueOrDefault("KillsFor")?.Contains($"Progression.KillsFor.{g.Key}") == true);
+                Categories.Add(new CategoryItem(DivinitiesKey, "Divinities", touched, TagDatabase.Gods.Count));
+                continue;
+            }
+
             var owned = ownedByCategory.GetValueOrDefault(key) ?? [];
             int? total = null;
             if (DbByCategory.TryGetValue(key, out var known))
             {
-                // The universe is the union: the save can hold tags the game data doesn't list.
                 total = known.Select(t => t.Tag).Union(owned, StringComparer.Ordinal).Count();
             }
-            allTotal += total ?? owned.Count;
-            items.Add(new CategoryItem(key, Display.CategoryDisplay(key), owned.Count, total));
+            Categories.Add(new CategoryItem(key, Display.CategoryDisplay(key), owned.Count, total));
         }
 
-        Categories.Add(new CategoryItem(AllCategoriesKey, "All", allOwned, allTotal));
-        foreach (var item in items)
-        {
-            Categories.Add(item);
-        }
-
-        SelectedCategory = Categories.FirstOrDefault(c => c.Key == previousKey) ?? Categories[0];
+        SelectedCategory = Categories.FirstOrDefault(c => c.Key == previousKey) ?? Categories.FirstOrDefault();
     }
 
     private void RefreshSnapshot()
     {
         Loadout.Clear();
         var snapshot = _profile?.RunSnapshot;
-        HasRun = snapshot?.HasRun ?? false;
-        if (snapshot is null || !snapshot.HasRun)
+        HasRun = snapshot?.HasRun == true && snapshot.MapName != "None";
+        if (snapshot is null || !HasRun)
         {
             MapName = string.Empty;
             PositionText = string.Empty;
@@ -222,7 +261,6 @@ public sealed class MainViewModel : ViewModelBase
 
         foreach (var entry in snapshot.Loadout)
         {
-            // Loadout ids are definition-asset names like "Tree_Warhammer".
             var info = TagDatabase.FindByInternalId(entry.Id);
             if (info?.DisplayName is not null)
             {
@@ -236,131 +274,93 @@ public sealed class MainViewModel : ViewModelBase
         }
     }
 
-    private void RefreshRecords()
+    private void RefreshItems()
     {
-        FilteredRecords.Clear();
+        Items.Clear();
+        SelectedItem = null;
         if (_profile is null)
         {
             return;
         }
 
-        string? categoryKey = _selectedCategory?.Key;
-        bool all = categoryKey is null or AllCategoriesKey;
         string search = _searchText.Trim();
+        bool searching = search.Length > 0;
 
-        IEnumerable<TagRecord> records = _profile.Records;
-        if (!all)
+        if (!searching && _selectedCategory?.Key == DivinitiesKey)
         {
-            records = records.Where(r => r.Category == categoryKey);
-        }
-        if (search.Length > 0)
-        {
-            records = records.Where(r =>
-                r.FullTag.Contains(search, StringComparison.OrdinalIgnoreCase)
-                || TagDatabase.Find(r.FullTag)?.DisplayName?.Contains(search, StringComparison.OrdinalIgnoreCase) == true);
+            foreach (var god in BuildGodCards())
+            {
+                Items.Add(god);
+            }
+            return;
         }
 
-        var rows = records
-            .OrderBy(r => { int i = Array.IndexOf(CategoryOrder, r.Category); return i < 0 ? int.MaxValue : i; })
-            .ThenBy(r => r.Category, StringComparer.Ordinal)
-            .ThenBy(r => r.Name, StringComparer.Ordinal)
-            .Select(MakeRow);
-        foreach (var row in rows)
+        var ownedValues = _profile.Records.ToDictionary(r => r.FullTag, r => r.Value, StringComparer.Ordinal);
+
+        IEnumerable<string> categories = searching
+            ? CategoryOrder.Where(k => k != DivinitiesKey)
+            : [_selectedCategory?.Key ?? "Class"];
+
+        foreach (string category in categories)
         {
-            FilteredRecords.Add(row);
+            foreach (var card in BuildCards(category, ownedValues, search))
+            {
+                Items.Add(card);
+            }
         }
 
-        foreach (var row in LockedRows(all, categoryKey, search))
+        if (searching)
         {
-            FilteredRecords.Add(row);
-        }
-
-        UpdateCompletionText();
-    }
-
-    /// <summary>Known game content the save has never touched, shown greyed with unlock hints.</summary>
-    private IEnumerable<RecordRow> LockedRows(bool all, string? categoryKey, string search)
-    {
-        var ownedTags = _profile!.Records.Select(r => r.FullTag).ToHashSet(StringComparer.Ordinal);
-
-        IEnumerable<GameTagInfo> known = all
-            ? TagDatabase.All
-            : DbByCategory.GetValueOrDefault(categoryKey ?? "") ?? Enumerable.Empty<GameTagInfo>();
-
-        var locked = known.Where(t => !ownedTags.Contains(t.Tag));
-        if (search.Length > 0)
-        {
-            locked = locked.Where(t =>
-                t.Tag.Contains(search, StringComparison.OrdinalIgnoreCase)
-                || t.DisplayName?.Contains(search, StringComparison.OrdinalIgnoreCase) == true);
-        }
-
-        return locked
-            .OrderBy(t => { int i = Array.IndexOf(CategoryOrder, t.Category); return i < 0 ? int.MaxValue : i; })
-            .ThenBy(t => t.DisplayName ?? t.Tag, StringComparer.Ordinal)
-            .Select(MakeLockedRow);
-    }
-
-    private static RecordRow MakeLockedRow(GameTagInfo info)
-    {
-        string leaf = info.Tag.Split('.') is { Length: >= 3 } parts ? string.Join('.', parts[2..]) : info.Tag;
-        string display = info.DisplayName ?? Display.Prettify(leaf);
-        string? hint = info.UnlockHint ?? (info.God is { } god ? $"Offered by the {god}" : null);
-
-        var tooltip = new StringBuilder(info.Tag);
-        tooltip.Append("\n\nNot in your save yet.");
-        if (info.Description is { } desc)
-        {
-            tooltip.Append("\n\n").Append(desc);
-        }
-        if (info.Flavor is { } flavor)
-        {
-            tooltip.Append("\n“").Append(flavor).Append('”');
-        }
-        if (hint is not null)
-        {
-            tooltip.Append("\n\nHow to get it: ").Append(hint);
-        }
-
-        return new RecordRow(display, info.Tag, Display.CategoryDisplay(info.Category), 0,
-            tooltip.ToString(), IsLocked: true, UnlockHint: hint);
-    }
-
-    private void UpdateCompletionText()
-    {
-        if (_selectedCategory is { HasCompletion: true, Total: { } total } cat)
-        {
-            int locked = total - cat.Owned;
-            string what = cat.Key == AllCategoriesKey ? "known unlocks" : cat.DisplayName;
-            CompletionText = locked == 0
-                ? $"All {total} {what} collected"
-                : $"{cat.Owned} of {total} {what} collected · greyed rows show what's left and how to get it";
-        }
-        else
-        {
-            CompletionText = "Read-only viewer · counters show unlocks, run tallies and kill counts";
+            foreach (var god in BuildGodCards().Where(g => g.Name.Contains(search, StringComparison.OrdinalIgnoreCase)))
+            {
+                Items.Add(god);
+            }
         }
     }
 
-    private static RecordRow MakeRow(TagRecord record)
+    private IEnumerable<ItemCard> BuildCards(string category, Dictionary<string, int> ownedValues, string search)
     {
-        var info = TagDatabase.Find(record.FullTag);
-        string display = info?.DisplayName ?? Display.Prettify(record.Name);
+        var known = DbByCategory.GetValueOrDefault(category) ?? [];
+        var knownTags = known.Select(t => t.Tag).ToHashSet(StringComparer.Ordinal);
 
-        var tooltip = new StringBuilder(record.FullTag);
-        if (info?.Description is { } desc)
-        {
-            tooltip.Append("\n\n").Append(desc);
-        }
-        if (info?.Flavor is { } flavor)
-        {
-            tooltip.Append("\n“").Append(flavor).Append('”');
-        }
-        if (info?.God is { } god)
-        {
-            tooltip.Append("\n\nGranted by the ").Append(god);
-        }
+        // Owned records first (including save-only tags the DB doesn't know), then locked content.
+        var owned = _profile!.Records
+            .Where(r => r.Category == category)
+            .Select(r => MakeCard(r.FullTag, category, TagDatabase.Find(r.FullTag), r.Value))
+            .OrderBy(c => c.Name, StringComparer.Ordinal);
 
-        return new RecordRow(display, record.FullTag, Display.CategoryDisplay(record.Category), record.Value, tooltip.ToString());
+        var locked = known
+            .Where(t => !ownedValues.ContainsKey(t.Tag))
+            .Select(t => MakeCard(t.Tag, category, t, null))
+            .OrderBy(c => c.Name, StringComparer.Ordinal);
+
+        foreach (var card in owned.Concat(locked))
+        {
+            if (search.Length == 0
+                || card.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
+                || card.Tag.Contains(search, StringComparison.OrdinalIgnoreCase))
+            {
+                yield return card;
+            }
+        }
+    }
+
+    private static ItemCard MakeCard(string tag, string category, GameTagInfo? info, int? value)
+    {
+        string leaf = tag.Split('.') is { Length: >= 3 } parts ? string.Join(" · ", parts[2..]) : tag;
+        string name = info?.DisplayName ?? Display.Prettify(leaf);
+        return new ItemCard(tag, name, category, IconStore.Get(info?.IconKey), value is null, value, info);
+    }
+
+    private IEnumerable<GodCard> BuildGodCards()
+    {
+        var values = _profile?.Records.ToDictionary(r => r.FullTag, r => r.Value, StringComparer.Ordinal)
+            ?? new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var god in TagDatabase.Gods)
+        {
+            yield return new GodCard(god, IconStore.Get(god.SymbolKey),
+                values.GetValueOrDefault($"Progression.Prayer.{god.Key}"),
+                values.GetValueOrDefault($"Progression.KillsFor.{god.Key}"));
+        }
     }
 }

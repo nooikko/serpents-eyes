@@ -1,0 +1,33 @@
+{
+  "_source": "Curated from the Serpent's Gaze community wiki (https://serpents-gaze.fandom.com/, CC-BY-SA): 'In-level Interactables' and 'Post-Boss Interactions' pages, plus in-repo game-file research. Game-authored unlock strings always win over these.",
+  "hints": [
+    { "tag": "Progression.Mushroom.EarthenMight", "hint": "Post-boss event 'The Carver': answer Hardiness", "source": "wiki" },
+    { "tag": "Progression.Mushroom.InnerTenacity", "hint": "Post-boss event 'The Hag': take the experimental mixture", "source": "wiki" },
+    { "tag": "Progression.Mushroom.Reknitting", "hint": "Post-boss event 'The Mushroom': consume the mushroom", "source": "wiki" },
+    { "tag": "Progression.Mushroom.Hubris", "hint": "Post-boss event 'The Mirror': shatter the mirror and survive the brawl", "source": "wiki" },
+    { "tag": "Progression.Mushroom.Dexterity", "hint": "Post-boss event 'The Finger Knight': defeat them and take the floating hand", "source": "wiki" },
+    { "tag": "Progression.Mushroom.RampantGrowth", "hint": "Post-boss event 'The Rhino'", "source": "wiki" },
+    { "tag": "Progression.Mushroom.SelfCentered", "hint": "Post-boss event 'The Swirling Mass'", "source": "wiki" },
+    { "tag": "Progression.Mushroom.GlassCardio", "hint": "Vagabond questline: her first post-boss meeting (the necklace request)", "source": "wiki" },
+    { "name": "Cinderform", "hint": "Post-boss event 'The Burning Dreamwalker'", "source": "wiki" },
+    { "name": "Niched", "hint": "Post-boss event 'The Corpse': read a tattered notebook", "source": "wiki" },
+    { "name": "Telic", "hint": "Post-boss event 'Leirra, the Golden Rose': ask to learn how to finish a fight", "source": "wiki" },
+    { "name": "Statuesque", "hint": "Post-boss event 'The Statue': study the deflecting stance", "source": "wiki" },
+    { "name": "Heartbroken", "hint": "Post-boss event 'The Weeping Statue'", "source": "wiki" },
+    { "name": "Extraversion", "hint": "Post-boss event 'The Fountain'", "source": "wiki" },
+    { "name": "Reckless", "hint": "Post-boss event 'The Dueling Statues'", "source": "wiki" },
+    { "name": "Sadistic", "hint": "Post-boss event 'The Dueling Statues'", "source": "wiki" },
+    { "name": "Coagulopathy", "hint": "Post-boss event 'The Table': pay 25 Blood", "source": "wiki" },
+    { "name": "Erwinia", "hint": "Post-boss event 'The Table': pay 25 Blood", "source": "wiki" },
+    { "name": "Aetherkindle", "hint": "Post-boss event 'The Table': pay 25 Blood", "source": "wiki" },
+    { "name": "Galesworn", "hint": "Finish a run wielding the Galesworn Greatsword", "source": "wiki" },
+    { "tag": "Progression.Weapon.RottenBranch", "hint": "Defeat the Firstborn in a post-boss encounter", "source": "wiki" },
+    { "name": "Galesworn Greatsword", "hint": "Random post-boss pickup — take it and carry it for the rest of the run", "source": "wiki" },
+    { "name": "Malvo's Toothpick", "hint": "Malvo, the Gluttonous questline (post-boss encounters)", "source": "wiki" },
+    { "name": "Aspect of the Shriveled Lord", "hint": "Complete Malvo, the Gluttonous's questline", "source": "wiki" },
+    { "name": "Aspect of the Serpent", "hint": "Post-boss event 'The Pink Sand': claim the Aspect", "source": "wiki" },
+    { "tag": "Progression.Class.Summoner", "hint": "Take the Dreamcallers curse, then slay the Dreamcaller it spawns", "source": "game-files research" },
+    { "name": "Temporary Relief", "hint": "Post-boss event 'The Plant'", "source": "wiki" },
+    { "name": "Sweet Nectar", "hint": "Post-boss event 'The Plant': pay 100 Blood", "source": "wiki" }
+  ]
+}

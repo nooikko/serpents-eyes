@@ -20,6 +20,15 @@ public static partial class TagDatabase
     /// <summary>All known tags, in extraction order.</summary>
     public static IReadOnlyList<GameTagInfo> All => Entries;
 
+    /// <summary>The seven gods ("Divinities"), including statue-less Sael.</summary>
+    public static IReadOnlyList<GodInfo> Gods => GodEntries;
+
+    /// <summary>Real in-game blessing lock rules, keyed by boss-kill threshold (1 and 3).</summary>
+    public static IReadOnlyDictionary<int, string> BlessingLockRules => BlessingLockRuleEntries;
+
+    public static GodInfo? FindGod(string key)
+        => GodEntries.FirstOrDefault(g => string.Equals(g.Key, key, StringComparison.OrdinalIgnoreCase));
+
     public static bool TryGet(string tag, out GameTagInfo info)
         => ByTagLookup.TryGetValue(tag, out info!);
 

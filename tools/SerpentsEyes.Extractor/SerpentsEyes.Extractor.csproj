@@ -7,4 +7,12 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="SkiaSharp" Version="4.150.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="wiki_hints.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
