@@ -6,6 +6,10 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <IsPackable>false</IsPackable>
     <AssemblyName>SerpentsEyes</AssemblyName>
+
+    <!-- Core's XML docs and PDB are for people referencing the library, not for people who
+         downloaded the app. Without this they land next to the exe in the release zip. -->
+    <AllowedReferenceRelatedFileExtensions>none</AllowedReferenceRelatedFileExtensions>
   </PropertyGroup>
 
   <!-- Release publish defaults, so the documented publish command and the release workflow
