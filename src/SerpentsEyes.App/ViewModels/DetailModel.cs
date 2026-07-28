@@ -51,22 +51,28 @@ public sealed partial class DetailModel
         var info = card.Info;
         var god = info?.God is { } g ? TagDatabase.FindGod(g) : null;
 
+        // Wording follows what the category's counter actually means. An Aspect is unlocked once
+        // and stays unlocked; a Blessing counter is how many times it has been taken, so calling
+        // it "unlocked" describes something the game does not model.
         string status = card.State switch
         {
-            CardState.Locked => "Locked",
+            CardState.Locked => TagSemantics.MissingVerb(card.CategoryKey),
             CardState.AlwaysAvailable => "Always available",
             _ when card.Value == 0 => "Found, not yet completed",
-            _ => "Unlocked",
+            _ => TagSemantics.HaveVerb(card.CategoryKey),
         };
         string? counter = card.Value is { } v && !card.IsLocked
             ? TagSemantics.CounterText(card.CategoryKey, card.Tag, v)
             : null;
 
-        // Only Blessings are mechanically god-gated (chosen at that god's statue).
-        // Elsewhere the god tag is a thematic family — it drives the card art.
-        string? godLine = god is null ? null
-            : card.CategoryKey == "Blessing" ? $"Blessed by {god.FullName}"
-            : $"Affinity · {GodCard.Capitalize(god.FullName)}";
+        // Only Blessings are mechanically god-gated: they are chosen at that god's statue.
+        // Elsewhere the god tag is thematic grouping that only drives the card art — nothing in
+        // the game's shop, altar or loot logic reads it — so showing it as "Affinity" invited
+        // the reader to believe it meant something. Sael, which is not a divinity at all, is one
+        // of the values it takes.
+        string? godLine = god is not null && card.CategoryKey == "Blessing"
+            ? $"Blessed by {god.FullName}"
+            : null;
 
         return new DetailModel
         {
@@ -75,7 +81,10 @@ public sealed partial class DetailModel
             CategoryLabel = Display.CategorySingular(card.CategoryKey),
             StatusText = status,
             CounterText = counter,
-            UnlockHint = card.IsLocked ? info?.UnlockHint : null,
+            // Shown whether or not it is already unlocked: "how did I get this" is worth
+            // answering after the fact, and hiding it made the app less useful the more you
+            // had unlocked.
+            UnlockHint = info?.UnlockHint,
             RawDescription = info?.RawDescription ?? info?.Description,
             Flavor = info?.Flavor,
             ScalingRows = BuildScalingRows(info?.RawDescription),

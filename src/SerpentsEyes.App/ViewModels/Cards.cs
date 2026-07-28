@@ -24,6 +24,28 @@ public sealed record ItemCard(
     public bool IsLocked => State == CardState.Locked;
     public double CardOpacity => IsLocked ? 0.38 : 1.0;
     public bool HasIcon => Icon is not null;
+
+    /// <summary>
+    /// Count shown on the tile itself, for categories where the number is the whole point.
+    /// </summary>
+    /// <remarks>
+    /// Boss Kills is three rows of a single integer each; making someone select a tile to read
+    /// one number is the wrong trade. Categories whose counter carries no information — a
+    /// Shortcut is always exactly 1 — deliberately show nothing.
+    /// </remarks>
+    public string? CountLine => TagSemantics.KindOf(CategoryKey) switch
+    {
+        ProgressKind.Tally when Value is { } v && v > 0 => CategoryKey switch
+        {
+            "Kill" => v == 1 ? "Defeated once" : $"Defeated ×{v}",
+            "Prayer" => v == 1 ? "Prayed once" : $"Prayed ×{v}",
+            "KillsFor" => v == 1 ? "1 boss kill" : $"{v} boss kills",
+            _ => v.ToString(),
+        },
+        _ => null,
+    };
+
+    public bool HasCountLine => CountLine is not null;
 }
 
 /// <summary>One god ("Divinity") tile.</summary>

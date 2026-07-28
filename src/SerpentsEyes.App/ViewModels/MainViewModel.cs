@@ -347,18 +347,37 @@ public sealed class MainViewModel : ViewModelBase
         {
             if (key == DivinitiesKey)
             {
-                int touched = TagDatabase.Gods.Count(g =>
+                // Statue-less entries are not Divinities; see BuildGodCards.
+                var divinities = TagDatabase.Gods.Where(g => g.HasStatue).ToList();
+                int touched = divinities.Count(g =>
                     ownedByCategory.GetValueOrDefault("Prayer")?.Contains($"Progression.Prayer.{g.Key}") == true
                     || ownedByCategory.GetValueOrDefault("KillsFor")?.Contains($"Progression.KillsFor.{g.Key}") == true);
-                Categories.Add(new CategoryItem(DivinitiesKey, "Divinities", touched, TagDatabase.Gods.Count));
+                Categories.Add(new CategoryItem(DivinitiesKey, "Divinities", touched, divinities.Count));
+                continue;
+            }
+
+            if (key == QuestsKey)
+            {
+                // "41" was a count of raw tags, which is not a thing anyone tracks. Questlines
+                // are, and the game's definitions give a real total including lines never begun.
+                var lines = Core.GameData.QuestLines.Build(_profile);
+                Categories.Add(new CategoryItem(
+                    QuestsKey,
+                    Display.CategoryDisplay(QuestsKey),
+                    lines.Count(l => l.IsComplete),
+                    lines.Count));
                 continue;
             }
 
             var owned = ownedByCategory.GetValueOrDefault(key) ?? [];
             int? total = null;
-            if (DbByCategory.TryGetValue(key, out var known))
+
+            // A completion bar only makes sense where there is something to complete. Aspects and
+            // Weapons are unlocked once and stay unlocked, so "12 of 14" is a real target.
+            // Blessings and the rest are offered per run and their counters are usage counts, so
+            // a bar there would invent a goal the game does not have.
+            if (TagSemantics.HasCompletionTotal(key) && DbByCategory.TryGetValue(key, out var known))
             {
-                // The completion bar tracks unlockables only; base-pool items can't be missing.
                 total = known.Where(t => t.HasProgression).Select(t => t.Tag)
                     .Union(owned, StringComparer.Ordinal).Count();
             }
@@ -501,7 +520,11 @@ public sealed class MainViewModel : ViewModelBase
     {
         var values = _profile?.Records.ToDictionary(r => r.FullTag, r => r.Value, StringComparer.Ordinal)
             ?? new Dictionary<string, int>(StringComparer.Ordinal);
-        foreach (var god in TagDatabase.Gods)
+
+        // Only gods with a statue are Divinities you can actually devote to. Sael has a
+        // Prayer tag and a KillsFor tag but no statue, no lore and no prayer prompt, and grants
+        // no blessings — it is an NPC with a questline, not one of the seven.
+        foreach (var god in TagDatabase.Gods.Where(g => g.HasStatue))
         {
             yield return new GodCard(god, IconStore.Get(god.SymbolKey),
                 values.GetValueOrDefault($"Progression.Prayer.{god.Key}"),

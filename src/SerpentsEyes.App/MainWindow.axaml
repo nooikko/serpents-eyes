@@ -275,6 +275,10 @@
                                 <TextBlock Text="{Binding Name}" FontSize="12" TextWrapping="Wrap"
                                            TextAlignment="Center" MaxHeight="34"
                                            Foreground="{StaticResource Text}" />
+                                <!-- Counts that are the whole point of the category, e.g. Boss Kills -->
+                                <TextBlock Text="{Binding CountLine}" FontSize="10" TextAlignment="Center"
+                                           IsVisible="{Binding HasCountLine}"
+                                           Foreground="{StaticResource TextMuted}" />
                             </StackPanel>
                         </DataTemplate>
                         <DataTemplate DataType="vm:GodCard">
