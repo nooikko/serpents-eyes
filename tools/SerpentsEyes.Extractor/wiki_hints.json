@@ -233,6 +233,11 @@
       "name": "Aspect of the Summoner",
       "hint": "Obtain Soul of the Caller: play with the Dreamcallers curse active and kill a Caller enemy. The curse first needs unlocking by giving the Blacksmith three shards of steel, which requires reaching the Grand Library in the Domain of Attar'Esh",
       "source": "wiki"
+    },
+    {
+      "name": "Burning Hunger",
+      "hint": "Post-boss event shrine 'Burning Hunger'",
+      "source": "game files (Blueprints/EventShrines/BP_EventShrine_BurningHunger)"
     }
   ]
 }
