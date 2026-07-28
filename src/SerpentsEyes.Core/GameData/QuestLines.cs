@@ -133,21 +133,69 @@ public static class QuestLines
     }
 
     /// <summary>
-    /// Groups a profile's quest records into questlines, owners in alphabetical order by display
-    /// name, and steps within each owner in narrative order: parts, then encounters, then
-    /// optional steps, then collectibles and bookkeeping.
+    /// Builds every questline the game defines, with the profile's progress overlaid.
     /// </summary>
+    /// <remarks>
+    /// The skeleton comes from <see cref="TagDatabase.Quests"/> rather than from the save, so a
+    /// questline shows its true length and appears even when it has never been started. Stages
+    /// the save has no record of are reported with a value of 0. Any quest tag in the save that
+    /// the database does not know about is still included, so a game update cannot make progress
+    /// silently vanish.
+    /// </remarks>
     public static IReadOnlyList<QuestLine> Build(SaveProfile profile)
     {
         ArgumentNullException.ThrowIfNull(profile);
 
-        return [.. profile.Records
-            .Select(Parse)
-            .Where(s => s is not null)
-            .Select(s => s!)
-            .GroupBy(s => s.OwnerKey, StringComparer.OrdinalIgnoreCase)
-            .Select(g => new QuestLine(g.Key, g.First().OwnerName, NumberSteps(g)))
+        var saved = profile.Records
+            .Where(r => string.Equals(r.Category, Category, StringComparison.Ordinal))
+            .ToDictionary(r => r.FullTag, r => r.Value, StringComparer.Ordinal);
+
+        // Union of what the game defines and what this save happens to contain.
+        var tagsByOwner = new Dictionary<string, SortedSet<string>>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (QuestDefinition definition in TagDatabase.Quests)
+        {
+            tagsByOwner[definition.OwnerKey] = new SortedSet<string>(definition.Tags, StringComparer.Ordinal);
+        }
+
+        foreach (string tag in saved.Keys)
+        {
+            string owner = OwnerOf(tag);
+            if (owner.Length == 0)
+            {
+                continue;
+            }
+            if (!tagsByOwner.TryGetValue(owner, out var set))
+            {
+                tagsByOwner[owner] = set = new SortedSet<string>(StringComparer.Ordinal);
+            }
+            set.Add(tag);
+        }
+
+        return [.. tagsByOwner
+            .Select(kv =>
+            {
+                var steps = kv.Value
+                    .Select(tag => Parse(new TagRecord(tag, saved.GetValueOrDefault(tag))))
+                    .Where(s => s is not null)
+                    .Select(s => s!);
+                return new QuestLine(kv.Key, OwnerDisplayName(kv.Key), NumberSteps(steps));
+            })
+            .Where(q => q.Steps.Count > 0)
             .OrderBy(q => q.OwnerName, StringComparer.Ordinal)];
+    }
+
+    /// <summary>Owner segment of a full quest tag, or empty when it is not one.</summary>
+    private static string OwnerOf(string fullTag)
+    {
+        const string prefix = "Progression.Quest.";
+        if (!fullTag.StartsWith(prefix, StringComparison.Ordinal))
+        {
+            return string.Empty;
+        }
+        string rest = fullTag[prefix.Length..];
+        int dot = rest.IndexOf('.');
+        return dot > 0 ? rest[..dot] : string.Empty;
     }
 
     /// <summary>

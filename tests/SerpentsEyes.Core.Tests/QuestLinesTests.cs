@@ -62,15 +62,36 @@ public class QuestLinesTests
     }
 
     [Fact]
-    public void Groups_Every_Quest_Record_By_Owner()
+    public void Every_Quest_Record_In_The_Save_Appears_Somewhere()
     {
         var profile = Fixture();
-        int questRecords = profile.Records.Count(r => r.Category == "Quest");
+        var saved = profile.Records.Where(r => r.Category == "Quest").Select(r => r.FullTag).ToHashSet(StringComparer.Ordinal);
 
-        var lines = QuestLines.Build(profile);
+        var seen = QuestLines.Build(profile).SelectMany(l => l.Steps).Select(s => s.FullTag).ToHashSet(StringComparer.Ordinal);
 
-        Assert.Equal(questRecords, lines.Sum(l => l.Steps.Count));
-        Assert.All(lines, l => Assert.NotEmpty(l.Steps));
+        Assert.True(saved.IsSubsetOf(seen), $"missing: {string.Join(", ", saved.Except(seen))}");
+    }
+
+    [Fact]
+    public void Questlines_Show_Stages_The_Save_Has_Never_Reached()
+    {
+        // The save cannot say how long a questline is; the quest assets can. A line the player
+        // has two stages into must not look like a completed two-stage line.
+        var profile = Fixture();
+        var saved = profile.Records.Where(r => r.Category == "Quest").Select(r => r.FullTag).ToHashSet(StringComparer.Ordinal);
+
+        var steps = QuestLines.Build(profile).SelectMany(l => l.Steps).ToList();
+
+        Assert.Contains(steps, s => !saved.Contains(s.FullTag) && s.Value == 0);
+    }
+
+    [Fact]
+    public void Questlines_Never_Started_Still_Appear()
+    {
+        var lines = QuestLines.Build(Fixture());
+
+        var untouched = lines.Where(l => l.CompletedParts == 0 && l.TotalParts > 0).ToList();
+        Assert.NotEmpty(untouched);
     }
 
     [Fact]
@@ -97,10 +118,12 @@ public class QuestLinesTests
     {
         var witness = QuestLines.Build(Fixture()).Single(q => q.OwnerKey == "TheWitness");
 
-        // Two stages, one done; the two encounters must not inflate the total.
-        Assert.Equal(2, witness.TotalParts);
+        // The Witness has six stages in the game files, of which the fixture has reached one.
+        // The two encounters are separate and must not inflate the stage total.
+        Assert.Equal(6, witness.TotalParts);
         Assert.Equal(1, witness.CompletedParts);
         Assert.False(witness.IsComplete);
+        Assert.Equal(2, witness.Steps.Count(s => s.Kind == QuestStepKind.Event));
     }
 
     [Fact]

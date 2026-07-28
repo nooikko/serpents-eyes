@@ -29,6 +29,12 @@ public static partial class TagDatabase
     /// <summary>Real in-game blessing lock rules, keyed by boss-kill threshold (1 and 3).</summary>
     public static IReadOnlyDictionary<int, string> BlessingLockRules => BlessingLockRuleEntries;
 
+    /// <summary>
+    /// Every questline the game defines, with all of its stages — including ones no save has
+    /// reached. A save alone cannot tell you how long a questline is.
+    /// </summary>
+    public static IReadOnlyList<QuestDefinition> Quests => QuestEntries;
+
     /// <summary>Looks up a Divinity by key, e.g. "Matriarch". Case-insensitive; null if unknown.</summary>
     public static GodInfo? FindGod(string key)
         => GodEntries.FirstOrDefault(g => string.Equals(g.Key, key, StringComparison.OrdinalIgnoreCase));

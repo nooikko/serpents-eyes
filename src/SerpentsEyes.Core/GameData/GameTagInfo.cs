@@ -36,3 +36,15 @@ public sealed record GodInfo(
     string? Themes,
     string? SymbolKey,
     bool HasStatue);
+
+/// <summary>
+/// A questline as the game defines it, read from the quest assets under Content/Quests.
+/// </summary>
+/// <remarks>
+/// The tag list is the complete set of stages, encounters and collectibles the questline knows
+/// about, which is what makes a true "3 of 6" possible: a save only records the stages the
+/// player has already reached.
+/// </remarks>
+/// <param name="OwnerKey">Owner segment used in the tags, e.g. "LordMalvo".</param>
+/// <param name="Tags">Every tag the questline defines.</param>
+public sealed record QuestDefinition(string OwnerKey, string[] Tags);
