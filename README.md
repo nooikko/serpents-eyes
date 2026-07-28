@@ -256,7 +256,8 @@ them. I check GitHub about once a week, so please allow a few days for a reply.
 
 The source code is licensed under the [MIT License](LICENSE).
 
-That license covers only the code. It does not cover:
+That license covers only the code. It does not cover the following, which are set out in full
+in [NOTICE](NOTICE):
 
 - **Game content.** In-game names, descriptions, lore, and the icons under
   `src/SerpentsEyes.App/Assets/Icons` are the property of the Serpent's Gaze rights holders and

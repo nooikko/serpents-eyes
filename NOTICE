@@ -1,0 +1,46 @@
+Serpent's Eyes
+Copyright (c) 2026 Quinn Penney
+
+This product includes material that is NOT covered by the MIT License in
+LICENSE. The MIT License applies to the source code of this project only.
+
+(This information is kept here rather than in LICENSE so that automated
+licence detection can still identify the project as MIT.)
+
+--------------------------------------------------------------------------
+1. Game content
+--------------------------------------------------------------------------
+
+In-game names, descriptions, lore, statue prompts, and the icons under
+src/SerpentsEyes.App/Assets/Icons are the property of the rights holders of
+Serpent's Gaze. They are extracted from the game's own asset files and are
+reproduced here for interoperability: a save-file browser that cannot name
+what it is showing you is not useful.
+
+They are not licensed under the MIT License, and no permission to use them is
+granted by this project.
+
+Serpent's Eyes is an unofficial, fan-made tool. It is not affiliated with,
+authorized by, endorsed by, or in any way officially connected with the
+developers or publishers of Serpent's Gaze.
+
+If you are a rights holder and object to anything here, please open an issue
+at https://github.com/nooikko/serpents-eyes/issues and it will be sorted out.
+
+--------------------------------------------------------------------------
+2. Wiki-derived text
+--------------------------------------------------------------------------
+
+The curated unlock hints in tools/SerpentsEyes.Extractor/wiki_hints.json, and
+the corresponding fields in the generated TagDatabase, are adapted from the
+Serpent's Gaze community wiki:
+
+    https://serpents-gaze.fandom.com/
+
+That content is licensed under Creative Commons Attribution-ShareAlike 3.0:
+
+    https://creativecommons.org/licenses/by-sa/3.0/
+
+CC BY-SA 3.0 requires attribution and is share-alike, which is not compatible
+with the MIT License. If you reuse those hint strings, they carry CC BY-SA 3.0
+with them, independently of the MIT grant covering the surrounding code.

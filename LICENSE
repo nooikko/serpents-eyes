@@ -19,20 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-This license covers the source code in this repository. It does not cover:
-
-* Game content. In-game names, descriptions, lore, and the icons under
-  src/SerpentsEyes.App/Assets/Icons are the property of the rights holders of
-  Serpent's Gaze and are reproduced here for interoperability. They are not
-  licensed under the MIT License.
-
-* Wiki-derived text. The curated unlock hints in
-  tools/SerpentsEyes.Extractor/wiki_hints.json, and the corresponding fields in
-  the generated TagDatabase, are adapted from the Serpent's Gaze community wiki
-  (https://serpents-gaze.fandom.com/) and are used under CC BY-SA 3.0
-  (https://creativecommons.org/licenses/by-sa/3.0/).
-
-See the Disclaimer section of README.md for details.
