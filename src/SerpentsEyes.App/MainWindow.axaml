@@ -89,7 +89,13 @@
         </Grid>
 
         <!-- ═══ Body: sidebar | card grid | detail pane ═══ -->
-        <Grid Grid.Row="1" ColumnDefinitions="216,*,320">
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="216" />
+                <ColumnDefinition Width="*" />
+                <!-- Collapses in the quest view, where nothing is selectable to inspect. -->
+                <ColumnDefinition Width="{Binding DetailPaneWidth}" />
+            </Grid.ColumnDefinitions>
 
             <!-- Sidebar -->
             <Grid Grid.Column="0" RowDefinitions="Auto,*,Auto" Background="{StaticResource Bg1}">
@@ -169,8 +175,79 @@
                            HorizontalAlignment="Center" VerticalAlignment="Center"
                            Foreground="{StaticResource TextMuted}" />
 
+                <!-- ═══ Questlines: ordered sequences, so panels rather than the card grid ═══ -->
+                <ScrollViewer Grid.Row="1" Margin="12,0,12,12"
+                              IsVisible="{Binding IsQuestView}">
+                    <ItemsControl ItemsSource="{Binding QuestLines}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:QuestLineCard">
+                                <Border Width="300" Margin="6" Padding="16,14"
+                                        CornerRadius="10" Background="{StaticResource Bg1}"
+                                        BorderBrush="{StaticResource Stroke}" BorderThickness="1"
+                                        Opacity="{Binding CardOpacity}">
+                                    <StackPanel Spacing="10">
+
+                                        <!-- Owner + progress -->
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBlock Grid.Column="0" Text="{Binding OwnerName}"
+                                                       FontFamily="{StaticResource DisplayFont}"
+                                                       FontSize="15" Foreground="{StaticResource Text}"
+                                                       VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Progress}"
+                                                       FontSize="11" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource TextMuted}" />
+                                        </Grid>
+
+                                        <ProgressBar Minimum="0" Maximum="{Binding ProgressMax}"
+                                                     Value="{Binding ProgressValue}"
+                                                     MinHeight="3" Height="3" CornerRadius="2"
+                                                     Foreground="{StaticResource Gold}"
+                                                     Background="{StaticResource Bg3}" />
+
+                                        <!-- Steps in narrative order -->
+                                        <ItemsControl ItemsSource="{Binding Rows}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:QuestStepRow">
+                                                    <Grid ColumnDefinitions="Auto,*,Auto,Auto"
+                                                          Margin="0,3" Opacity="{Binding RowOpacity}">
+                                                        <TextBlock Grid.Column="0" Text="{Binding Marker}"
+                                                                   FontSize="10" Margin="0,0,9,0"
+                                                                   VerticalAlignment="Center"
+                                                                   Foreground="{StaticResource Gold}" />
+                                                        <TextBlock Grid.Column="1" Text="{Binding Label}"
+                                                                   FontSize="12" VerticalAlignment="Center"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   Foreground="{StaticResource Text}" />
+                                                        <Border Grid.Column="2" Background="{StaticResource Bg3}"
+                                                                CornerRadius="4" Padding="6,1" Margin="8,0,0,0"
+                                                                VerticalAlignment="Center"
+                                                                IsVisible="{Binding HasKindLabel}">
+                                                            <TextBlock Text="{Binding KindLabel}" FontSize="9.5"
+                                                                       Foreground="{StaticResource TextMuted}" />
+                                                        </Border>
+                                                        <TextBlock Grid.Column="3" Text="{Binding Detail}"
+                                                                   FontSize="11" Margin="8,0,0,0"
+                                                                   VerticalAlignment="Center"
+                                                                   IsVisible="{Binding HasDetail}"
+                                                                   Foreground="{StaticResource TextMuted}" />
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
                 <ListBox Grid.Row="1" Classes="cards" Margin="12,0,12,12"
-                         IsVisible="{Binding !HasStatus}"
+                         IsVisible="{Binding ShowCardGrid}"
                          ItemsSource="{Binding Items}"
                          SelectedItem="{Binding SelectedItem}">
                     <ListBox.ItemsPanel>
@@ -219,6 +296,7 @@
 
             <!-- Detail pane -->
             <Border Grid.Column="2" Background="{StaticResource Bg1}"
+                    IsVisible="{Binding !IsQuestView}"
                     BorderBrush="{StaticResource Stroke}" BorderThickness="1,0,0,0">
                 <Panel>
                     <TextBlock Text="Select something to inspect it"

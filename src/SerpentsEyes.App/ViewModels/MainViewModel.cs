@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.Controls;
 using SerpentsEyes.Core;
 using SerpentsEyes.Core.GameData;
 
@@ -14,6 +15,9 @@ namespace SerpentsEyes.App.ViewModels;
 public sealed class MainViewModel : ViewModelBase
 {
     public const string DivinitiesKey = "@Divinities";
+
+    /// <summary>Sidebar key for the Quests category, which the game data calls "Quest".</summary>
+    public const string QuestsKey = "Quest";
 
     /// <summary>Sidebar ordering. Meta is API-only; Prayer/KillsFor fold into Divinities.</summary>
     private static readonly string[] CategoryOrder =
@@ -42,6 +46,7 @@ public sealed class MainViewModel : ViewModelBase
     private string? _statusMessage;
     private bool _hasRun;
     private bool _isBusy;
+    private bool _isQuestView;
     private string _mapName = string.Empty;
     private string _positionText = string.Empty;
     private string _fileInfoText = string.Empty;
@@ -60,6 +65,35 @@ public sealed class MainViewModel : ViewModelBase
     public ObservableCollection<CategoryItem> Categories { get; } = [];
     public ObservableCollection<object> Items { get; } = [];
     public ObservableCollection<LoadoutChip> Loadout { get; } = [];
+
+    /// <summary>Questlines, shown instead of the card grid when the Quests category is selected.</summary>
+    public ObservableCollection<QuestLineCard> QuestLines { get; } = [];
+
+    /// <summary>
+    /// True when the Quests category is showing. Questlines are ordered sequences rather than a
+    /// flat set, so they get a list of panels instead of the card grid.
+    /// </summary>
+    public bool IsQuestView
+    {
+        get => _isQuestView;
+        private set
+        {
+            if (SetField(ref _isQuestView, value))
+            {
+                OnPropertyChanged(nameof(ShowCardGrid));
+                OnPropertyChanged(nameof(DetailPaneWidth));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Width of the detail column. Collapsed in the quest view: questlines are read in place, so
+    /// an empty "select something" pane would cost a column of questlines for nothing.
+    /// </summary>
+    public GridLength DetailPaneWidth => IsQuestView ? new GridLength(0) : new GridLength(320);
+
+    /// <summary>The card grid is the default view; a status message or the quest view replaces it.</summary>
+    public bool ShowCardGrid => !HasStatus && !IsQuestView;
 
     public ProfileChoice? SelectedProfile
     {
@@ -140,6 +174,7 @@ public sealed class MainViewModel : ViewModelBase
             if (SetField(ref _statusMessage, value))
             {
                 OnPropertyChanged(nameof(HasStatus));
+                OnPropertyChanged(nameof(ShowCardGrid));
             }
         }
     }
@@ -367,7 +402,9 @@ public sealed class MainViewModel : ViewModelBase
     private void RefreshItems()
     {
         Items.Clear();
+        QuestLines.Clear();
         SelectedItem = null;
+        IsQuestView = false;
         if (_profile is null)
         {
             return;
@@ -375,6 +412,16 @@ public sealed class MainViewModel : ViewModelBase
 
         string search = _searchText.Trim();
         bool searching = search.Length > 0;
+
+        if (!searching && _selectedCategory?.Key == QuestsKey)
+        {
+            IsQuestView = true;
+            foreach (var line in Core.GameData.QuestLines.Build(_profile))
+            {
+                QuestLines.Add(new QuestLineCard(line));
+            }
+            return;
+        }
 
         if (!searching && _selectedCategory?.Key == DivinitiesKey)
         {
