@@ -241,19 +241,16 @@ This tool reads save files that are already on your own computer. It does not mo
 circumvent, or redistribute the game itself.
 
 If you are a rights holder and object to anything in this repository, please
-[open an issue](https://github.com/nooikko/serpents-eyes/issues) and I will take it seriously.
-See the note on response times below — if it is genuinely urgent, say so in the title and I will
-see it sooner.
+[open an issue](https://github.com/nooikko/serpents-eyes/issues) and I will sort it out. If it's
+urgent, say so in the title.
 
 ## Project status
 
-Finished, as far as I'm concerned. It does what I built it to do, and I'm not actively adding
+Finished, as far as I'm concerned — it does what I built it to do, and I'm not actively adding
 features.
 
-That doesn't mean it's abandoned — bug reports and pull requests are welcome and I do intend to
-act on them. But this is a side project and **I don't check GitHub often**, so expect a reply in
-weeks rather than days. If that's too slow for you, forking is entirely fine; that's part of why
-it's MIT.
+It isn't abandoned, though. Bug reports and pull requests are genuinely welcome and I do read
+them. I check GitHub about once a week, so please allow a few days for a reply.
 
 ## License
 

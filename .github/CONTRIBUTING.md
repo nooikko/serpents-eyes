@@ -4,15 +4,13 @@ Thanks for taking a look. Bug reports, save-format findings, and pull requests a
 
 ## Before you invest time
 
-This is a finished side project, not something I work on weekly, and **I don't check GitHub
-often**. A reply will likely take weeks. I'd rather say that up front than have you polish a
-pull request and then hear nothing.
+This is a finished side project rather than something I work on every week, and I check GitHub
+about once a week. So please allow a few days for a reply — I'd rather say that up front than
+have you polish a pull request and wonder why it's gone quiet.
 
-So: small, self-contained changes are the ones most likely to get merged without a long
-back-and-forth. If you're planning something large, open an issue describing it first — not for
-permission, but so you don't build something substantial that turns out to conflict with how the
-save format is handled. And if waiting isn't workable for you, fork it. That's a perfectly good
-outcome and part of why this is MIT.
+Small, self-contained changes are the easiest to review and the quickest to merge. If you're
+planning something larger, open an issue describing it first — not for permission, but so we can
+agree on the approach before you build it, particularly for anything touching the save format.
 
 ## Reporting a bug
 
