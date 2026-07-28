@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Platform;
 using Avalonia.Platform.Storage;
 using SerpentsEyes.App.ViewModels;
 
@@ -26,6 +27,14 @@ public partial class MainWindow : Window
             ExtendClientAreaToDecorationsHint = false;
             WindowDecorations = WindowDecorations.Full;
             CustomTitleBar.IsVisible = false;
+        }
+        else
+        {
+            // The .axaml sets a single PNG, which every platform can decode. Windows gets the
+            // .ico instead: from one bitmap Avalonia builds one HICON at that bitmap's size, so
+            // a 256px PNG leaves the taskbar and Alt-Tab downscaling it to 16 and 32 on the fly.
+            // Handed the icon group, it picks the frame drawn for the size being asked for.
+            Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://SerpentsEyes/Assets/AppIcon.ico")));
         }
 
         AddHandler(DragDrop.DragOverEvent, OnDragOver);

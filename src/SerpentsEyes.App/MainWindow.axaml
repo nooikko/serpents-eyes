@@ -9,6 +9,7 @@
         x:Class="SerpentsEyes.App.MainWindow"
         x:DataType="vm:MainViewModel"
         Title="Serpent's Eyes"
+        Icon="/Assets/AppIcon.png"
         Width="1280" Height="800" MinWidth="980" MinHeight="600"
         Background="{StaticResource Bg0}"
         ExtendClientAreaToDecorationsHint="True"

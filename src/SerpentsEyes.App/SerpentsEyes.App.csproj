@@ -4,6 +4,9 @@
     <OutputType>WinExe</OutputType>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Explorer reads this out of the exe; the same file is loaded as the window icon at
+         runtime. Regenerate it with tools/SerpentsEyes.IconGen rather than editing it. -->
+    <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
     <IsPackable>false</IsPackable>
     <AssemblyName>SerpentsEyes</AssemblyName>
 
