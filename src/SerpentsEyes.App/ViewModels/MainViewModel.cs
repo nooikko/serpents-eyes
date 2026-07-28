@@ -347,8 +347,7 @@ public sealed class MainViewModel : ViewModelBase
         {
             if (key == DivinitiesKey)
             {
-                // Statue-less entries are not Divinities; see BuildGodCards.
-                var divinities = TagDatabase.Gods.Where(g => g.HasStatue).ToList();
+                var divinities = TagDatabase.Gods.Where(g => g.IsDivinity).ToList();
                 int touched = divinities.Count(g =>
                     ownedByCategory.GetValueOrDefault("Prayer")?.Contains($"Progression.Prayer.{g.Key}") == true
                     || ownedByCategory.GetValueOrDefault("KillsFor")?.Contains($"Progression.KillsFor.{g.Key}") == true);
@@ -521,10 +520,9 @@ public sealed class MainViewModel : ViewModelBase
         var values = _profile?.Records.ToDictionary(r => r.FullTag, r => r.Value, StringComparer.Ordinal)
             ?? new Dictionary<string, int>(StringComparer.Ordinal);
 
-        // Only gods with a statue are Divinities you can actually devote to. Sael has a
-        // Prayer tag and a KillsFor tag but no statue, no lore and no prayer prompt, and grants
-        // no blessings — it is an NPC with a questline, not one of the seven.
-        foreach (var god in TagDatabase.Gods.Where(g => g.HasStatue))
+        // See GodInfo.IsDivinity: excludes Sael, which has no statue, and the Keeper of Eyes,
+        // which is reworked legacy content.
+        foreach (var god in TagDatabase.Gods.Where(g => g.IsDivinity))
         {
             yield return new GodCard(god, IconStore.Get(god.SymbolKey),
                 values.GetValueOrDefault($"Progression.Prayer.{god.Key}"),

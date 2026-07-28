@@ -28,6 +28,16 @@ public sealed record GameTagInfo(
 /// One of the seven gods ("Divinities"). Lore and prompts are the game's own strings;
 /// Themes comes from the community wiki (CC-BY-SA).
 /// </summary>
+/// <param name="Key">Tag key, e.g. "Matriarch".</param>
+/// <param name="FullName">In-game name, e.g. "the Weeping Matriarch".</param>
+/// <param name="Lore">The game's own lore string for the statue.</param>
+/// <param name="StatuePrompt">The prompt shown when devoting at the statue.</param>
+/// <param name="Themes">Community-wiki summary of what the god's blessings do.</param>
+/// <param name="SymbolKey">Icon key for the house symbol.</param>
+/// <param name="HasStatue">Whether the game defines a statue for it at all.</param>
+/// <param name="Hidden">
+/// Legacy content that is present in the files but not reachable in the current game.
+/// </param>
 public sealed record GodInfo(
     string Key,
     string FullName,
@@ -35,7 +45,21 @@ public sealed record GodInfo(
     string? StatuePrompt,
     string? Themes,
     string? SymbolKey,
-    bool HasStatue);
+    bool HasStatue,
+    bool Hidden)
+{
+    /// <summary>
+    /// True for the Divinities a player can actually devote to, which is what the app should
+    /// list.
+    /// </summary>
+    /// <remarks>
+    /// Two separate exclusions. Sael has no statue, no lore and no blessings — the data alone
+    /// rules it out. The Keeper of Eyes does have all of those in the files but is reworked
+    /// legacy content that cannot be reached in the current game, which nothing in the data
+    /// reveals; that one is recorded player knowledge.
+    /// </remarks>
+    public bool IsDivinity => HasStatue && !Hidden;
+}
 
 /// <summary>
 /// A questline as the game defines it, read from the quest assets under Content/Quests.

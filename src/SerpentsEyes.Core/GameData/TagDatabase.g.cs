@@ -271,13 +271,13 @@ public static partial class TagDatabase
 
     private static readonly GodInfo[] GodEntries =
     [
-        new("Dream", "the Dream Thing", "Your thoughts wander to someplace beautiful ...", "Press to profess your devotion to the Dream Thing", "On-hit, status and Relic-usage blessings", "UI_HousesSymbol_Dream_01", true),
-        new("Heretic", "the Heretic", "A profound yearning burns within you ...", "Press to profess your devotion to the Heretic", "Crit and Fire blessings", "UI_HousesSymbol_Heretic_01", true),
-        new("Keeper", "the Keeper of Eyes", "Your ears are reached by whispers of forbidden subjects ...", "Press to profess your devotion to the Keeper of Eyes", null, "UI_HousesSymbol_Keeper_01", true),
-        new("Matriarch", "the Weeping Matriarch", "A gentle warmth envelops you, and your blood runs warm ...", "Press to profess your devotion to the Weeping Matriarch", "Blood generation, Sanguine and Bleed blessings", "UI_HousesSymbol_Matriarch_01", true),
-        new("Reflection", "the Reflection", "You look sharper than a moment ago ...", "Press to profess your devotion to the Reflection", "Buffing, Summons and Physical damage blessings", "UI_HousesSymbol_Reflection_01", true),
-        new("Tree", "Magnolia", "The air is rich with the sweet scent of magnolias ...", "Press to profess your devotion to Magnolia", "Support, Healing, Rot and Blight blessings", "UI_HousesSymbol_Tree_01", true),
-        new("Sael", "Sael", null, null, null, "saelicon", false),
+        new("Dream", "the Dream Thing", "Your thoughts wander to someplace beautiful ...", "Press to profess your devotion to the Dream Thing", "On-hit, status and Relic-usage blessings", "UI_HousesSymbol_Dream_01", true, false),
+        new("Heretic", "the Heretic", "A profound yearning burns within you ...", "Press to profess your devotion to the Heretic", "Crit and Fire blessings", "UI_HousesSymbol_Heretic_01", true, false),
+        new("Keeper", "the Keeper of Eyes", "Your ears are reached by whispers of forbidden subjects ...", "Press to profess your devotion to the Keeper of Eyes", null, "UI_HousesSymbol_Keeper_01", true, true),
+        new("Matriarch", "the Weeping Matriarch", "A gentle warmth envelops you, and your blood runs warm ...", "Press to profess your devotion to the Weeping Matriarch", "Blood generation, Sanguine and Bleed blessings", "UI_HousesSymbol_Matriarch_01", true, false),
+        new("Reflection", "the Reflection", "You look sharper than a moment ago ...", "Press to profess your devotion to the Reflection", "Buffing, Summons and Physical damage blessings", "UI_HousesSymbol_Reflection_01", true, false),
+        new("Tree", "Magnolia", "The air is rich with the sweet scent of magnolias ...", "Press to profess your devotion to Magnolia", "Support, Healing, Rot and Blight blessings", "UI_HousesSymbol_Tree_01", true, false),
+        new("Sael", "Sael", null, null, null, "saelicon", false, false),
     ];
 
     private static readonly Dictionary<int, string> BlessingLockRuleEntries = new()

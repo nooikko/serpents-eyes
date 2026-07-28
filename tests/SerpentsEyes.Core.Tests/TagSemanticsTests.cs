@@ -68,16 +68,41 @@ public class TagSemanticsTests
     }
 
     [Fact]
-    public void Sael_Is_Not_A_Divinity()
+    public void Sael_Is_Excluded_Because_The_Data_Says_So()
     {
         // Sael has Prayer and KillsFor tags but no statue, no lore and no prayer prompt, and
-        // grants no blessings. HasStatue is what separates the six real gods from it.
+        // grants no blessings. Nothing curated is needed to rule it out.
         var sael = TagDatabase.FindGod("Sael");
 
         Assert.NotNull(sael);
         Assert.False(sael!.HasStatue);
+        Assert.False(sael.IsDivinity);
         Assert.DoesNotContain(TagDatabase.All, t => t.Category == "Blessing" && t.God == "Sael");
-        Assert.Equal(6, TagDatabase.Gods.Count(g => g.HasStatue));
+    }
+
+    [Fact]
+    public void Keeper_Is_Excluded_As_Legacy_Content()
+    {
+        // The Keeper of Eyes looks complete in the files — statue, lore, prayer prompt — so it
+        // cannot be filtered on data alone. It is reworked legacy content that is unreachable in
+        // the current game, which is recorded knowledge rather than something extracted.
+        var keeper = TagDatabase.FindGod("Keeper");
+
+        Assert.NotNull(keeper);
+        Assert.True(keeper!.HasStatue);
+        Assert.True(keeper.Hidden);
+        Assert.False(keeper.IsDivinity);
+    }
+
+    [Fact]
+    public void Five_Divinities_Are_Shown()
+    {
+        var shown = TagDatabase.Gods.Where(g => g.IsDivinity).Select(g => g.Key).ToList();
+
+        Assert.Equal(5, shown.Count);
+        Assert.DoesNotContain("Sael", shown);
+        Assert.DoesNotContain("Keeper", shown);
+        Assert.Contains("Matriarch", shown);
     }
 
     [Fact]

@@ -35,16 +35,32 @@ internal static partial class Extractor
     private static readonly string[] PrefixPriority =
         ["Tree_", "Class_", "CA_", "Blessing_", "Mushroom_", "Seed_", "Utility_", "Weed_", "InventoryItem_"];
 
-    /// <summary>God tag key → (full in-game name, has a statue, community-wiki theme summary).</summary>
-    private static readonly (string Key, string FullName, bool HasStatue, string? Themes)[] GodsMeta =
+    /// <summary>
+    /// God tag key → (full in-game name, has a statue, hidden from the Divinities view,
+    /// community-wiki theme summary).
+    /// </summary>
+    /// <remarks>
+    /// Two different reasons a tag with a god key is not a Divinity you can devote to:
+    ///
+    /// <list type="bullet">
+    /// <item><description><b>No statue.</b> Sael has a Prayer tag and a KillsFor tag but no
+    /// statue, no lore, no prayer prompt and no blessings. It is an NPC with a questline, and
+    /// the game data says so on its own.</description></item>
+    /// <item><description><b>Hidden.</b> The Keeper of Eyes does have a statue, lore and a
+    /// prayer prompt in the files, but it is legacy content that was reworked into other things
+    /// and is not reachable in the current game. Nothing in the data distinguishes it, so this
+    /// is player knowledge, recorded here deliberately rather than inferred.</description></item>
+    /// </list>
+    /// </remarks>
+    private static readonly (string Key, string FullName, bool HasStatue, bool Hidden, string? Themes)[] GodsMeta =
     [
-        ("Dream", "the Dream Thing", true, "On-hit, status and Relic-usage blessings"),
-        ("Heretic", "the Heretic", true, "Crit and Fire blessings"),
-        ("Keeper", "the Keeper of Eyes", true, null),
-        ("Matriarch", "the Weeping Matriarch", true, "Blood generation, Sanguine and Bleed blessings"),
-        ("Reflection", "the Reflection", true, "Buffing, Summons and Physical damage blessings"),
-        ("Tree", "Magnolia", true, "Support, Healing, Rot and Blight blessings"),
-        ("Sael", "Sael", false, null),
+        ("Dream", "the Dream Thing", true, false, "On-hit, status and Relic-usage blessings"),
+        ("Heretic", "the Heretic", true, false, "Crit and Fire blessings"),
+        ("Keeper", "the Keeper of Eyes", true, true, null),
+        ("Matriarch", "the Weeping Matriarch", true, false, "Blood generation, Sanguine and Bleed blessings"),
+        ("Reflection", "the Reflection", true, false, "Buffing, Summons and Physical damage blessings"),
+        ("Tree", "Magnolia", true, false, "Support, Healing, Rot and Blight blessings"),
+        ("Sael", "Sael", false, false, null),
     ];
 
     private sealed record AssetInfo(string BaseName, string RelPath, List<string> Tags,
@@ -90,7 +106,7 @@ internal static partial class Extractor
         string? IconPath, string? SymbolPath);
 
     internal sealed record GodEntry(string Key, string FullName, string? Lore, string? StatuePrompt,
-        string? Themes, string? SymbolKey, bool HasStatue, string? SymbolPath);
+        string? Themes, string? SymbolKey, bool HasStatue, bool Hidden, string? SymbolPath);
 
     public static int Run(string contentRoot)
     {
@@ -195,14 +211,14 @@ internal static partial class Extractor
 
         // 5. Gods table + synthetic Prayer/KillsFor entries.
         var gods = new List<GodEntry>();
-        foreach (var (key, fullName, hasStatue, themes) in GodsMeta)
+        foreach (var (key, fullName, hasStatue, hidden, themes) in GodsMeta)
         {
             string lower = key.ToLowerInvariant();
             string symbolFile = key == "Sael" ? "/Game/Textures/UI/Deities/saelicon" : $"/Game/Textures/UI/Deities/UI_HousesSymbol_{key}_01";
             gods.Add(new GodEntry(key, fullName,
                 Clean(tableEntries.GetValueOrDefault($"{lower}_lore")),
                 Clean(tableEntries.GetValueOrDefault($"pray_{lower}")),
-                themes, IconKey(symbolFile), hasStatue, symbolFile));
+                themes, IconKey(symbolFile), hasStatue, hidden, symbolFile));
         }
 
         foreach (var g in gods)
@@ -578,7 +594,8 @@ internal static partial class Extractor
             sb.Append("        new(").Append(Lit(g.Key)).Append(", ").Append(Lit(g.FullName)).Append(", ")
               .Append(Lit(g.Lore)).Append(", ").Append(Lit(g.StatuePrompt)).Append(", ")
               .Append(Lit(g.Themes)).Append(", ").Append(Lit(g.SymbolKey)).Append(", ")
-              .Append(g.HasStatue ? "true" : "false").AppendLine("),");
+              .Append(g.HasStatue ? "true" : "false").Append(", ")
+              .Append(g.Hidden ? "true" : "false").AppendLine("),");
         }
         sb.AppendLine("    ];");
         sb.AppendLine();
