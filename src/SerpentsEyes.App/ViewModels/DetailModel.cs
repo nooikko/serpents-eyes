@@ -46,7 +46,7 @@ public sealed partial class DetailModel
         ["luk"] = "Luck", ["sta"] = "Stamina", ["tou"] = "Toughness", ["swi"] = "Swiftness", ["fin"] = "Finesse",
     };
 
-    public static DetailModel ForItem(ItemCard card, SaveProfile? profile)
+    public static DetailModel ForItem(ItemCard card)
     {
         var info = card.Info;
         var god = info?.God is { } g ? TagDatabase.FindGod(g) : null;

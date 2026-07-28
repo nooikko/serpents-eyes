@@ -17,14 +17,40 @@ namespace SerpentsEyes.Extractor;
 /// </summary>
 internal static class IconExporter
 {
-    private const string ManifestPath = @"C:\Users\elija\Documents\serpents_gaze_workbench\reports\icon_manifest.json";
+    /// <summary>
+    /// Longest edge of an exported icon, in pixels.
+    /// </summary>
+    /// <remarks>
+    /// The app draws these at 118px in the card grid and 170px in the detail pane, so 384
+    /// leaves better than 2x headroom for high-DPI displays. The source textures are up to
+    /// 671x1202, which is roughly 30x more pixels than anything on screen ever needs.
+    /// </remarks>
+    private const int MaxDimension = 384;
+
+    /// <summary>
+    /// WebP quality. These are painted card illustrations, not screenshots or line art, so
+    /// lossy compression at this level is visually indistinguishable at the sizes drawn while
+    /// being roughly an order of magnitude smaller than PNG.
+    /// </summary>
+    private const int WebpQuality = 90;
+
+    public const string Extension = ".webp";
 
     public static int Run(string contentRoot)
     {
-        var manifest = JsonSerializer.Deserialize<List<string>>(File.ReadAllText(ManifestPath))!;
+        string manifestPath = ExtractorPaths.IconManifest;
+        if (!File.Exists(manifestPath))
+        {
+            Console.Error.WriteLine(
+                $"Icon manifest not found: {manifestPath}{Environment.NewLine}" +
+                "Run the extractor without --icons first; a normal run writes the manifest.");
+            return 1;
+        }
+
+        var manifest = JsonSerializer.Deserialize<List<string>>(File.ReadAllText(manifestPath))!;
         Console.WriteLine($"Icon manifest: {manifest.Count} textures");
 
-        string outDir = Path.Combine(FindRepoRoot(), "src", "SerpentsEyes.App", "Assets", "Icons");
+        string outDir = ExtractorPaths.IconOutputDirectory;
         Directory.CreateDirectory(outDir);
 
         int ok = 0, failed = 0;
@@ -49,9 +75,10 @@ internal static class IconExporter
                     continue;
                 }
 
-                using var image = SKImage.FromBitmap(bitmap);
-                using var data = image.Encode(SKEncodedImageFormat.Png, 100);
-                using var stream = File.Create(Path.Combine(outDir, key + ".png"));
+                using var scaled = Downscale(bitmap);
+                using var image = SKImage.FromBitmap(scaled);
+                using var data = image.Encode(SKEncodedImageFormat.Webp, WebpQuality);
+                using var stream = File.Create(Path.Combine(outDir, key + Extension));
                 data.SaveTo(stream);
                 ok++;
             }
@@ -61,8 +88,30 @@ internal static class IconExporter
                 failed++;
             }
         }
-        Console.WriteLine($"Exported {ok} PNGs to {outDir} ({failed} failed)");
+        Console.WriteLine($"Exported {ok} {Extension} icons to {outDir} ({failed} failed)");
         return ok > 0 ? 0 : 1;
+    }
+
+    /// <summary>
+    /// Scales a decoded texture down so its longest edge is at most <see cref="MaxDimension"/>,
+    /// preserving aspect ratio. Returns the original when it is already small enough.
+    /// </summary>
+    private static SKBitmap Downscale(SKBitmap source)
+    {
+        int longest = Math.Max(source.Width, source.Height);
+        if (longest <= MaxDimension)
+        {
+            return source;
+        }
+
+        double scale = (double)MaxDimension / longest;
+        var size = new SKSizeI(
+            Math.Max(1, (int)Math.Round(source.Width * scale)),
+            Math.Max(1, (int)Math.Round(source.Height * scale)));
+
+        // The caller owns `source` and disposes it, so never dispose it here.
+        var sampling = new SKSamplingOptions(SKCubicResampler.Mitchell);
+        return source.Resize(size, sampling) ?? source;
     }
 
     /// <summary>Maps "/Game/Textures/UI/X" to the on-disk .uasset path, trying a "_256" suffix variant.</summary>
@@ -296,13 +345,4 @@ internal static class IconExporter
             (byte)((a.G * wa + b.G * wb) / (wa + wb)),
             (byte)((a.B * wa + b.B * wb) / (wa + wb)));
 
-    private static string FindRepoRoot()
-    {
-        string? dir = AppContext.BaseDirectory;
-        while (dir is not null && !File.Exists(Path.Combine(dir, "SerpentsEyes.slnx")))
-        {
-            dir = Path.GetDirectoryName(dir);
-        }
-        return dir ?? throw new InvalidOperationException("Could not locate repo root");
-    }
 }

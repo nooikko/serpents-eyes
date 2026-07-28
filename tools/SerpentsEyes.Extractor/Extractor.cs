@@ -6,8 +6,6 @@ namespace SerpentsEyes.Extractor;
 
 internal static partial class Extractor
 {
-    private const string WorkbenchReports = @"C:\Users\elija\Documents\serpents_gaze_workbench\reports";
-
     /// <summary>Tag categories that live in per-item definition assets.</summary>
     [GeneratedRegex(@"^Progression\.(Class|Weapon|Blessing|Mushroom|Item|Utility|Curse)\.[A-Za-z0-9_.]+$")]
     private static partial Regex DefinitionTag();
@@ -237,13 +235,15 @@ internal static partial class Extractor
         if (tableEntries.GetValueOrDefault("blessing_locked_1bosskill") is { } rule1) { lockRules[1] = rule1; }
         if (tableEntries.GetValueOrDefault("blessing_locked_3bosskill") is { } rule3) { lockRules[3] = rule3; }
 
-        // 9. Emit.
-        string repoRoot = FindRepoRoot();
-        string generatedPath = Path.Combine(repoRoot, "src", "SerpentsEyes.Core", "GameData", "TagDatabase.g.cs");
+        // 9. Emit. The generated source goes into the Core project; the reports and the icon
+        // manifest go to the output directory (default <repo>/artifacts, override with --out).
+        string generatedPath = ExtractorPaths.GeneratedTagDatabase;
         File.WriteAllText(generatedPath, GenerateCSharp(entriesOut, mapTitles, gods, lockRules));
         Console.WriteLine($"Wrote {generatedPath}");
 
-        string jsonPath = Path.Combine(WorkbenchReports, "tag_database.json");
+        ExtractorPaths.EnsureOutputDirectory();
+
+        string jsonPath = ExtractorPaths.TagDatabaseReport;
         File.WriteAllText(jsonPath, GenerateJson(entriesOut, mapTitles, gods));
         Console.WriteLine($"Wrote {jsonPath}");
 
@@ -252,7 +252,7 @@ internal static partial class Extractor
             .Concat(gods.Select(g => g.SymbolPath))
             .Where(p => p is not null).Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(p => p, StringComparer.Ordinal).ToList();
-        string manifestPath = Path.Combine(WorkbenchReports, "icon_manifest.json");
+        string manifestPath = ExtractorPaths.IconManifest;
         File.WriteAllText(manifestPath, JsonSerializer.Serialize(iconPaths, JsonOptions));
         Console.WriteLine($"Wrote {manifestPath} ({iconPaths.Count} unique textures)");
 
@@ -331,7 +331,7 @@ internal static partial class Extractor
         string hintsPath = Path.Combine(AppContext.BaseDirectory, "wiki_hints.json");
         if (!File.Exists(hintsPath))
         {
-            hintsPath = Path.Combine(FindRepoRoot(), "tools", "SerpentsEyes.Extractor", "wiki_hints.json");
+            hintsPath = Path.Combine(ExtractorPaths.RepoRoot, "tools", "SerpentsEyes.Extractor", "wiki_hints.json");
         }
         using var doc = JsonDocument.Parse(File.ReadAllText(hintsPath));
 
@@ -527,16 +527,6 @@ internal static partial class Extractor
 
     private static string Capitalize(string s)
         => s.Length > 0 && char.IsLower(s[0]) ? char.ToUpperInvariant(s[0]) + s[1..] : s;
-
-    private static string FindRepoRoot()
-    {
-        string? dir = AppContext.BaseDirectory;
-        while (dir is not null && !File.Exists(Path.Combine(dir, "SerpentsEyes.slnx")))
-        {
-            dir = Path.GetDirectoryName(dir);
-        }
-        return dir ?? throw new InvalidOperationException("Could not locate repo root (SerpentsEyes.slnx)");
-    }
 
     private static string GenerateCSharp(List<TagEntry> entries, List<(string Key, string Title)> mapTitles,
         List<GodEntry> gods, Dictionary<int, string> lockRules)

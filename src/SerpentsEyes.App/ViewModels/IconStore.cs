@@ -21,7 +21,10 @@ public static class IconStore
             return cached;
         }
 
-        var uri = new Uri($"avares://SerpentsEyes.App/Assets/Icons/{iconKey}.png");
+        // WebP: the source textures are painted card art, where lossy compression at display
+        // size is an order of magnitude smaller than PNG for no visible difference. Avalonia
+        // decodes via Skia, which handles WebP natively.
+        var uri = new Uri($"avares://SerpentsEyes.App/Assets/Icons/{iconKey}.webp");
         Bitmap? bitmap = null;
         if (AssetLoader.Exists(uri))
         {

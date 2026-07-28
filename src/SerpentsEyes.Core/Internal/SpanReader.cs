@@ -6,6 +6,12 @@ namespace SerpentsEyes.Core.Internal;
 /// <summary>Little-endian primitive reader over a byte buffer, tracking its own offset.</summary>
 internal ref struct SpanReader(ReadOnlySpan<byte> data)
 {
+    /// <summary>
+    /// Upper bound on a single FString. Real saves top out around 40 bytes; this only
+    /// exists so a corrupt length field cannot drive a huge allocation or a wild read.
+    /// </summary>
+    public const int MaxPlausibleStringLength = 4096;
+
     private readonly ReadOnlySpan<byte> _data = data;
 
     public int Position { get; private set; }
@@ -62,6 +68,11 @@ internal ref struct SpanReader(ReadOnlySpan<byte> data)
     /// Reads an Unreal-style FString: int32 length including the trailing NUL, then bytes.
     /// A negative length means UTF-16LE with -length characters (including NUL).
     /// </summary>
+    /// <remarks>
+    /// The single-byte branch decodes as Latin-1 rather than ASCII. Latin-1 is a bijection
+    /// over all 256 byte values, so a high byte survives as the matching char instead of
+    /// being replaced with '?' by the ASCII decoder fallback.
+    /// </remarks>
     public string ReadFString()
     {
         int start = Position;
@@ -73,16 +84,24 @@ internal ref struct SpanReader(ReadOnlySpan<byte> data)
 
         if (length > 0)
         {
+            if (length > MaxPlausibleStringLength)
+            {
+                throw new SaveFormatException($"Implausible string length {length}", start);
+            }
             if (length > Remaining)
             {
                 throw new SaveFormatException($"String length {length} exceeds remaining data", start);
             }
-            string value = Encoding.ASCII.GetString(_data.Slice(Position, length - 1));
+            string value = Encoding.Latin1.GetString(_data.Slice(Position, length - 1));
             Position += length;
             return value;
         }
 
         long charCount = -(long)length;
+        if (charCount > MaxPlausibleStringLength)
+        {
+            throw new SaveFormatException($"Implausible UTF-16 string length {charCount}", start);
+        }
         long byteCountLong = charCount * 2;
         if (byteCountLong > Remaining)
         {
@@ -99,6 +118,16 @@ internal ref struct SpanReader(ReadOnlySpan<byte> data)
         => Remaining >= 4 ? BinaryPrimitives.ReadInt32LittleEndian(_data[Position..]) : null;
 
     public byte[] ReadRemaining() => ReadBytes(Remaining);
+
+    /// <summary>Moves the read position, for speculative parsing that needs to rewind.</summary>
+    public void Seek(int position)
+    {
+        if (position < 0 || position > _data.Length)
+        {
+            throw new ArgumentOutOfRangeException(nameof(position));
+        }
+        Position = position;
+    }
 
     private readonly void Require(int count)
     {

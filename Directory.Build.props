@@ -1,0 +1,27 @@
+<Project>
+
+  <!-- Shared settings for every project in the repo. Per-project files override these. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- Warnings are errors everywhere, including tests and tools, so CI cannot go green
+         on code that would not pass review locally. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+    <!-- Overridden from the command line by the release workflow: -p:Version=1.2.3 -->
+    <Version>0.1.0</Version>
+    <Authors>Quinn Penney</Authors>
+    <Product>Serpent's Eyes</Product>
+    <Company>Quinn Penney</Company>
+    <Copyright>Copyright (c) 2026 Quinn Penney</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/nooikko/serpents-eyes</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+  </PropertyGroup>
+
+</Project>

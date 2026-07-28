@@ -1,13 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Shared settings (target framework, nullability, warnings-as-errors, version, and
+       repository metadata) live in Directory.Build.props at the repo root. -->
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <IsAotCompatible>true</IsAotCompatible>
     <RootNamespace>SerpentsEyes.Core</RootNamespace>
     <Description>Typed reader/writer for Serpent's Gaze save files (NinjaGarden NG_SaveFormat_4).</Description>
+    <PackageId>SerpentsEyes.Core</PackageId>
+    <PackageTags>serpents-gaze;savegame;unreal;parser</PackageTags>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
 </Project>

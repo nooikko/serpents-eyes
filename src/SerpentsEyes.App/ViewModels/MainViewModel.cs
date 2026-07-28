@@ -4,6 +4,8 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using SerpentsEyes.Core;
 using SerpentsEyes.Core.GameData;
 
@@ -28,6 +30,9 @@ public sealed class MainViewModel : ViewModelBase
         TagDatabase.All.GroupBy(t => t.Category)
             .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.Ordinal);
 
+    /// <summary>How long to let typing settle before rebuilding the card grid.</summary>
+    private static readonly TimeSpan SearchDebounce = TimeSpan.FromMilliseconds(150);
+
     private SaveProfile? _profile;
     private ProfileChoice? _selectedProfile;
     private CategoryItem? _selectedCategory;
@@ -36,9 +41,15 @@ public sealed class MainViewModel : ViewModelBase
     private string _searchText = string.Empty;
     private string? _statusMessage;
     private bool _hasRun;
+    private bool _isBusy;
     private string _mapName = string.Empty;
     private string _positionText = string.Empty;
     private string _fileInfoText = string.Empty;
+
+    /// <summary>Incremented per load so a superseded load cannot overwrite a newer one.</summary>
+    private int _loadGeneration;
+
+    private CancellationTokenSource? _searchDebounce;
 
     public MainViewModel()
     {
@@ -57,7 +68,7 @@ public sealed class MainViewModel : ViewModelBase
         {
             if (SetField(ref _selectedProfile, value) && value is not null)
             {
-                LoadProfile(value.Path);
+                _ = LoadProfileAsync(value.Path);
             }
         }
     }
@@ -84,7 +95,7 @@ public sealed class MainViewModel : ViewModelBase
             {
                 Detail = value switch
                 {
-                    ItemCard card => DetailModel.ForItem(card, _profile),
+                    ItemCard card => DetailModel.ForItem(card),
                     GodCard card => DetailModel.ForGod(card, _profile),
                     _ => null,
                 };
@@ -113,10 +124,13 @@ public sealed class MainViewModel : ViewModelBase
         {
             if (SetField(ref _searchText, value))
             {
-                RefreshItems();
+                DebounceRefreshItems();
             }
         }
     }
+
+    /// <summary>True while a save file is being read and parsed.</summary>
+    public bool IsBusy { get => _isBusy; private set => SetField(ref _isBusy, value); }
 
     public string? StatusMessage
     {
@@ -137,6 +151,7 @@ public sealed class MainViewModel : ViewModelBase
     public string PositionText { get => _positionText; private set => SetField(ref _positionText, value); }
     public string FileInfoText { get => _fileInfoText; private set => SetField(ref _fileInfoText, value); }
 
+    /// <summary>Rescans the save directories and reloads the current (or best) profile.</summary>
     public void RefreshProfiles()
     {
         string? previous = _selectedProfile?.Path;
@@ -148,22 +163,25 @@ public sealed class MainViewModel : ViewModelBase
 
         if (Profiles.Count == 0)
         {
-            StatusMessage = $"No save files found in {SaveLocator.DefaultSaveDirectory}. Open one manually to get started.";
+            SetProfile(null);
+            StatusMessage =
+                $"No save files found in {SaveLocator.DefaultSaveDirectory}. Use Open… to pick one, or drop a .sav file here.";
             return;
         }
 
-        SelectedProfile =
+        ProfileChoice target =
             Profiles.FirstOrDefault(p => p.Path == previous)
             ?? Profiles.FirstOrDefault(p => p.DisplayName.Equals("profile_0", StringComparison.OrdinalIgnoreCase))
             ?? Profiles[0];
 
-        // Force a reload even when the selection object did not change.
-        if (_selectedProfile is not null)
-        {
-            LoadProfile(_selectedProfile.Path);
-        }
+        // ProfileChoice is a record, so re-selecting an equal value would not fire the setter
+        // and Reload would do nothing. Assign the field directly and load exactly once.
+        _selectedProfile = target;
+        OnPropertyChanged(nameof(SelectedProfile));
+        _ = LoadProfileAsync(target.Path);
     }
 
+    /// <summary>Opens a save from an arbitrary path, adding it to the profile list.</summary>
     public void OpenFile(string path)
     {
         var choice = Profiles.FirstOrDefault(p => p.Path == path);
@@ -172,29 +190,99 @@ public sealed class MainViewModel : ViewModelBase
             choice = new ProfileChoice(path, Path.GetFileNameWithoutExtension(path));
             Profiles.Add(choice);
         }
+
+        if (Equals(_selectedProfile, choice))
+        {
+            _ = LoadProfileAsync(choice.Path);
+            return;
+        }
         SelectedProfile = choice;
     }
 
-    private void LoadProfile(string path)
+    /// <summary>
+    /// Reads and parses off the UI thread, then applies the result on it.
+    /// </summary>
+    /// <remarks>
+    /// Never throws: this is invoked without awaiting from property setters and the constructor,
+    /// so an escaping exception would surface as an unobserved task fault rather than a message
+    /// the user can act on.
+    /// </remarks>
+    private async Task LoadProfileAsync(string path)
     {
+        int generation = ++_loadGeneration;
+        IsBusy = true;
         try
         {
-            _profile = SaveProfile.Load(path);
-            StatusMessage = null;
+            (SaveProfile? profile, string info, string? error) = await Task.Run<(SaveProfile?, string, string?)>(() =>
+            {
+                try
+                {
+                    // Stat before reading so the reported size matches the bytes we parsed.
+                    var fileInfo = new FileInfo(path);
+                    string details = $"{fileInfo.Length:N0} bytes · saved {fileInfo.LastWriteTime:g}";
+                    return (SaveProfile.Load(path), details, null);
+                }
+                catch (Exception ex)
+                {
+                    // A viewer must survive anything on disk, including files that are not
+                    // saves at all, so this deliberately does not filter by exception type.
+                    return (null, string.Empty, ex.Message);
+                }
+            }).ConfigureAwait(true);
 
-            var info = new FileInfo(path);
-            FileInfoText = $"{info.Length:N0} bytes · saved {info.LastWriteTime:g}";
+            // A newer load started while this one was running; its result wins.
+            if (generation != _loadGeneration)
+            {
+                return;
+            }
+
+            _profile = profile;
+            FileInfoText = info;
+            StatusMessage = error is null ? null : $"Could not read {Path.GetFileName(path)}: {error}";
+
+            RebuildCategories();
+            RefreshSnapshot();
+            RefreshItems();
         }
-        catch (Exception ex) when (ex is SaveFormatException or IOException or UnauthorizedAccessException)
+        finally
         {
-            _profile = null;
-            FileInfoText = string.Empty;
-            StatusMessage = $"Could not read {Path.GetFileName(path)}: {ex.Message}";
+            if (generation == _loadGeneration)
+            {
+                IsBusy = false;
+            }
         }
+    }
 
+    private void SetProfile(SaveProfile? profile)
+    {
+        _profile = profile;
+        FileInfoText = string.Empty;
         RebuildCategories();
         RefreshSnapshot();
         RefreshItems();
+    }
+
+    /// <summary>
+    /// Coalesces keystrokes so the card grid rebuilds once when typing pauses rather than on
+    /// every character. The grid is not virtualized, so a rebuild realizes every card image.
+    /// </summary>
+    private async void DebounceRefreshItems()
+    {
+        var previous = _searchDebounce;
+        var cts = new CancellationTokenSource();
+        _searchDebounce = cts;
+        previous?.Cancel();
+        previous?.Dispose();
+
+        try
+        {
+            await Task.Delay(SearchDebounce, cts.Token).ConfigureAwait(true);
+            RefreshItems();
+        }
+        catch (OperationCanceledException)
+        {
+            // Superseded by a later keystroke.
+        }
     }
 
     private void RebuildCategories()
@@ -249,7 +337,7 @@ public sealed class MainViewModel : ViewModelBase
     {
         Loadout.Clear();
         var snapshot = _profile?.RunSnapshot;
-        HasRun = snapshot?.HasRun == true && snapshot.MapName != "None";
+        HasRun = snapshot?.HasRun == true;
         if (snapshot is null || !HasRun)
         {
             MapName = string.Empty;
@@ -299,9 +387,12 @@ public sealed class MainViewModel : ViewModelBase
 
         var ownedValues = _profile.Records.ToDictionary(r => r.FullTag, r => r.Value, StringComparer.Ordinal);
 
+        // Search spans the categories this profile actually has, not a fixed list: a game
+        // update adding a category, or anything landing in TagRecord's "Other" bucket, still
+        // gets a sidebar entry and must be reachable from search too.
         IEnumerable<string> categories = searching
-            ? CategoryOrder.Where(k => k != DivinitiesKey)
-            : [_selectedCategory?.Key ?? "Class"];
+            ? Categories.Select(c => c.Key).Where(k => k != DivinitiesKey)
+            : _selectedCategory is null ? [] : [_selectedCategory.Key];
 
         foreach (string category in categories)
         {

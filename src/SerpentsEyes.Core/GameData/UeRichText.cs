@@ -32,6 +32,7 @@ public sealed record RichSegment(RichSegmentKind Kind, string Text, string? Tag 
 /// </summary>
 public static class UeRichText
 {
+    /// <summary>Splits the game's rich-text markup into typed segments, in source order.</summary>
     public static IReadOnlyList<RichSegment> Parse(string raw)
     {
         var segments = new List<RichSegment>();
@@ -118,6 +119,13 @@ public static class UeRichText
 /// </summary>
 public static class ScalingMath
 {
+    /// <summary>
+    /// Nesting limit for the recursive-descent parsers. Real formulas nest two or three deep;
+    /// this only exists so malformed input fails with a catchable exception rather than
+    /// overflowing the stack.
+    /// </summary>
+    private const int MaxRecursionDepth = 64;
+
     /// <summary>True when the formula depends only on item level (no player-attribute terms).</summary>
     public static bool IsLevelOnly(string expression) => !expression.Contains("{p_", StringComparison.OrdinalIgnoreCase);
 
@@ -143,6 +151,7 @@ public static class ScalingMath
     private sealed class Formatter(string text, Func<string, string> resolve)
     {
         private int _pos;
+        private int _depth;
 
         public bool AtEnd
         {
@@ -195,6 +204,24 @@ public static class ScalingMath
         }
 
         private string FormatFactor()
+        {
+            // Recursive descent with no bound would let deeply nested parens blow the stack,
+            // and StackOverflowException cannot be caught. Fail as a FormatException instead.
+            if (++_depth > MaxRecursionDepth)
+            {
+                throw new FormatException("expression nested too deeply");
+            }
+            try
+            {
+                return FormatFactorCore();
+            }
+            finally
+            {
+                _depth--;
+            }
+        }
+
+        private string FormatFactorCore()
         {
             SkipWhitespace();
             char c = Peek();
@@ -268,6 +295,7 @@ public static class ScalingMath
     private sealed class Parser(string text, int level)
     {
         private int _pos;
+        private int _depth;
 
         public bool AtEnd
         {
@@ -326,6 +354,22 @@ public static class ScalingMath
         }
 
         private double ParseFactor()
+        {
+            if (++_depth > MaxRecursionDepth)
+            {
+                throw new FormatException("expression nested too deeply");
+            }
+            try
+            {
+                return ParseFactorCore();
+            }
+            finally
+            {
+                _depth--;
+            }
+        }
+
+        private double ParseFactorCore()
         {
             SkipWhitespace();
             char c = Peek();

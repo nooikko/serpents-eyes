@@ -9,13 +9,16 @@ public static partial class TagDatabase
 {
     // Lazy: static-field initialization order across partial-class files is not
     // guaranteed, and the data arrays live in the generated half of this class.
-    private static Dictionary<string, GameTagInfo>? _byTag;
-    private static Dictionary<string, GameTagInfo>? _byInternalId;
-    private static Dictionary<string, string>? _mapTitles;
+    // Lazy<T> rather than "??=" because the app reads these from a background parse
+    // thread as well as the UI thread, and a torn read would hand back a half-built
+    // dictionary.
+    private static readonly Lazy<Dictionary<string, GameTagInfo>> ByTag = new(BuildByTag);
+    private static readonly Lazy<Dictionary<string, GameTagInfo>> ByInternalId = new(BuildByInternalId);
+    private static readonly Lazy<Dictionary<string, string>> MapTitles = new(BuildMapTitles);
 
-    private static Dictionary<string, GameTagInfo> ByTagLookup => _byTag ??= BuildByTag();
-    private static Dictionary<string, GameTagInfo> ByInternalIdLookup => _byInternalId ??= BuildByInternalId();
-    private static Dictionary<string, string> MapTitleLookup => _mapTitles ??= BuildMapTitles();
+    private static Dictionary<string, GameTagInfo> ByTagLookup => ByTag.Value;
+    private static Dictionary<string, GameTagInfo> ByInternalIdLookup => ByInternalId.Value;
+    private static Dictionary<string, string> MapTitleLookup => MapTitles.Value;
 
     /// <summary>All known tags, in extraction order.</summary>
     public static IReadOnlyList<GameTagInfo> All => Entries;
@@ -26,12 +29,18 @@ public static partial class TagDatabase
     /// <summary>Real in-game blessing lock rules, keyed by boss-kill threshold (1 and 3).</summary>
     public static IReadOnlyDictionary<int, string> BlessingLockRules => BlessingLockRuleEntries;
 
+    /// <summary>Looks up a Divinity by key, e.g. "Matriarch". Case-insensitive; null if unknown.</summary>
     public static GodInfo? FindGod(string key)
         => GodEntries.FirstOrDefault(g => string.Equals(g.Key, key, StringComparison.OrdinalIgnoreCase));
 
+    /// <summary>Looks up a tag, e.g. "Progression.Blessing.ChanceHoT".</summary>
+    /// <param name="tag">Full progression tag.</param>
+    /// <param name="info">The matching entry when found.</param>
+    /// <returns>True when the tag is known to the database.</returns>
     public static bool TryGet(string tag, out GameTagInfo info)
         => ByTagLookup.TryGetValue(tag, out info!);
 
+    /// <summary>Looks up a tag, e.g. "Progression.Blessing.ChanceHoT", or null if unknown.</summary>
     public static GameTagInfo? Find(string tag)
         => ByTagLookup.GetValueOrDefault(tag);
 

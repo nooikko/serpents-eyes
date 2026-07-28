@@ -12,12 +12,14 @@
         Width="1280" Height="800" MinWidth="980" MinHeight="600"
         Background="{StaticResource Bg0}"
         ExtendClientAreaToDecorationsHint="True"
-        WindowDecorations="None">
+        WindowDecorations="None"
+        DragDrop.AllowDrop="True">
 
-    <Grid RowDefinitions="36,*">
+    <Grid RowDefinitions="Auto,*">
 
-        <!-- ═══ Custom title bar ═══ -->
-        <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,Auto,*,Auto"
+        <!-- ═══ Custom title bar (Windows only; hidden elsewhere in code-behind) ═══ -->
+        <Grid Grid.Row="0" x:Name="CustomTitleBar" Height="36"
+              ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto"
               Background="{StaticResource Bg1}"
               WindowDecorationProperties.ElementRole="TitleBar">
 
@@ -42,24 +44,47 @@
                       SelectedItem="{Binding SelectedProfile}" />
 
             <Button Grid.Column="2" VerticalAlignment="Center"
-                    Margin="8,0" Padding="10,4" FontSize="12"
+                    Margin="8,0,0,0" Padding="10,4" FontSize="12"
                     WindowDecorationProperties.ElementRole="User"
                     Background="Transparent" Foreground="{StaticResource TextMuted}"
                     Click="Reload_Click" ToolTip.Tip="Re-read the save file from disk">
                 ⟳ Reload
             </Button>
 
-            <TextBlock Grid.Column="3" Text="{Binding FileInfoText}" HorizontalAlignment="Right"
-                       Margin="0,0,14,0" FontSize="11" Foreground="{StaticResource TextMuted}"
-                       VerticalAlignment="Center" />
+            <Button Grid.Column="3" VerticalAlignment="Center"
+                    Margin="4,0,8,0" Padding="10,4" FontSize="12"
+                    WindowDecorationProperties.ElementRole="User"
+                    Background="Transparent" Foreground="{StaticResource TextMuted}"
+                    Click="Open_Click" ToolTip.Tip="Open a .sav file from anywhere (or drop one on the window)">
+                Open…
+            </Button>
 
-            <StackPanel Grid.Column="4" Orientation="Horizontal">
+            <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right"
+                        Margin="0,0,14,0" Spacing="10" VerticalAlignment="Center">
+                <TextBlock Text="Reading…" FontSize="11" Foreground="{StaticResource Gold}"
+                           VerticalAlignment="Center" IsVisible="{Binding IsBusy}" />
+                <TextBlock Text="{Binding FileInfoText}" FontSize="11"
+                           Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
+            </StackPanel>
+
+            <!-- Vector caption glyphs: the Windows glyphs 🗕 🗖 🗙 render as tofu without
+                 Segoe MDL2, which is not present on every machine. -->
+            <StackPanel Grid.Column="5" Orientation="Horizontal">
                 <Button Classes="caption" WindowDecorationProperties.ElementRole="MinimizeButton"
-                        Click="Minimize_Click" FontSize="12">🗕</Button>
+                        Click="Minimize_Click" ToolTip.Tip="Minimize">
+                    <Path Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1"
+                          Data="M 0,5 H 10" />
+                </Button>
                 <Button Classes="caption" WindowDecorationProperties.ElementRole="MaximizeButton"
-                        Click="Maximize_Click" FontSize="12">🗖</Button>
+                        Click="Maximize_Click" ToolTip.Tip="Maximize">
+                    <Path Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1"
+                          Data="M 0.5,0.5 H 9.5 V 9.5 H 0.5 Z" />
+                </Button>
                 <Button Classes="caption close" WindowDecorationProperties.ElementRole="CloseButton"
-                        Click="Close_Click" FontSize="12">🗙</Button>
+                        Click="Close_Click" ToolTip.Tip="Close">
+                    <Path Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1"
+                          Data="M 0,0 L 10,10 M 10,0 L 0,10" />
+                </Button>
             </StackPanel>
         </Grid>
 

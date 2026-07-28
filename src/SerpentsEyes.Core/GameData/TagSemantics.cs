@@ -23,6 +23,10 @@ public static class TagSemantics
     /// <summary>The tag of the starting Aspect, re-granted on every run (hence its high count).</summary>
     public const string StartingAspectTag = "Progression.Class.Newborn";
 
+    /// <summary>
+    /// Maps a raw counter to its meaning: absent means never reached, 0 means reached but not
+    /// completed, and anything higher means unlocked (the value is how many times).
+    /// </summary>
     public static ProgressStatus Status(int? value) => value switch
     {
         null => ProgressStatus.Locked,
