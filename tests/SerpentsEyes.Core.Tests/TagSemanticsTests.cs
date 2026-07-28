@@ -106,10 +106,31 @@ public class TagSemanticsTests
     }
 
     [Fact]
-    public void Content_Describing_The_Removed_Doom_Mechanic_Is_Gone()
+    public void No_Player_Facing_Text_Mentions_The_Removed_Doom_Mechanic()
     {
+        static bool Mentions(string? s) => s?.Contains("Doom", StringComparison.OrdinalIgnoreCase) == true;
+
+        var offenders = TagDatabase.All
+            .Where(t => Mentions(t.DisplayName) || Mentions(t.Description) || Mentions(t.RawDescription)
+                     || Mentions(t.Flavor) || Mentions(t.UnlockHint)
+                     || t.Masteries.Any(m => Mentions(m.Name) || Mentions(m.Description) || Mentions(m.RawDescription)))
+            .Select(t => t.DisplayName ?? t.Tag)
+            .ToList();
+
+        Assert.True(offenders.Count == 0, $"Doom still visible on: {string.Join(", ", offenders)}");
         Assert.Null(TagDatabase.Find("Progression.Blessing.DoomProc"));
         Assert.Null(TagDatabase.Find("Progression.Mushroom.DotFocus_Doom"));
-        Assert.DoesNotContain(TagDatabase.All, t => (t.Description ?? "").Contains("Doom", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Content_Belonging_To_A_Hidden_God_Is_Dropped()
+    {
+        // A blessing is chosen at its god's statue, so one belonging to an unreachable statue
+        // cannot be obtained. Perplexing Awareness was the Keeper's surviving blessing.
+        var hidden = TagDatabase.Gods.Where(g => g.Hidden).Select(g => g.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        Assert.NotEmpty(hidden);
+        Assert.DoesNotContain(TagDatabase.All, t => t.God is { } g && hidden.Contains(g));
+        Assert.Null(TagDatabase.Find("Progression.Blessing.SoulConversionOrbs"));
     }
 }

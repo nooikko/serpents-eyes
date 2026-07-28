@@ -231,6 +231,18 @@ internal static partial class Extractor
                 g.SymbolKey, null, [], [], g.SymbolPath, null));
         }
 
+        // Content belonging to a hidden god goes with it. Blessings are chosen at their god's
+        // statue, so a blessing whose statue cannot be reached cannot be obtained either;
+        // listing it would imply otherwise. Derived from the Hidden flag rather than named
+        // tag-by-tag, so hiding another god later needs no further edits here.
+        var hiddenGods = gods.Where(g => g.Hidden).Select(g => g.Key)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (hiddenGods.Count > 0)
+        {
+            int removed = entriesOut.RemoveAll(e => e.God is { } god && hiddenGods.Contains(god));
+            Console.WriteLine($"Dropped {removed} entries belonging to hidden gods: {string.Join(", ", hiddenGods)}");
+        }
+
         // 6. Wiki-curated unlock hints (game-authored strings win).
         ApplyWikiHints(ref entriesOut);
 
