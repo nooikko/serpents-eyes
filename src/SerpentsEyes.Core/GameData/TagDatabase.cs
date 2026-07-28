@@ -35,6 +35,16 @@ public static partial class TagDatabase
     /// </summary>
     public static IReadOnlyList<QuestDefinition> Quests => QuestEntries;
 
+    private static readonly Lazy<Dictionary<string, string>> QuestFlavorLookup = new(() =>
+        QuestFlavorEntries.ToDictionary(e => e.Tag, e => e.Text, StringComparer.Ordinal));
+
+    /// <summary>
+    /// The line the game shows when a quest collectible is picked up, which says where it comes
+    /// from — "You pull a weirdly appetizing kidney out of the corpse of the Sunclad Wanderer".
+    /// Null for steps the game has no such string for.
+    /// </summary>
+    public static string? QuestFlavor(string fullTag) => QuestFlavorLookup.Value.GetValueOrDefault(fullTag);
+
     /// <summary>Looks up a Divinity by key, e.g. "Matriarch". Case-insensitive; null if unknown.</summary>
     public static GodInfo? FindGod(string key)
         => GodEntries.FirstOrDefault(g => string.Equals(g.Key, key, StringComparison.OrdinalIgnoreCase));

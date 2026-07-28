@@ -511,7 +511,15 @@ public sealed class MainViewModel : ViewModelBase
     private static ItemCard MakeCard(string tag, string category, GameTagInfo? info, CardState state, int? value)
     {
         string leaf = tag.Split('.') is { Length: >= 3 } parts ? string.Join(" · ", parts[2..]) : tag;
-        string name = info?.DisplayName ?? Display.Prettify(leaf);
+
+        // Shortcuts and Locations name a place in the game's internal vocabulary, which
+        // prettifies into "Attaresh · Library · 0". The level string table calls the same place
+        // "The Grand Library", so prefer that where it resolves.
+        string? placeName = TagSemantics.KindOf(category) is ProgressKind.Checklist
+            ? PlaceNames.LevelTitle(leaf.Replace(" · ", "."))
+            : null;
+
+        string name = info?.DisplayName ?? placeName ?? Display.Prettify(leaf);
         return new ItemCard(tag, name, category, IconStore.Get(info?.IconKey), state, value, info);
     }
 

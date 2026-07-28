@@ -26,14 +26,16 @@ public sealed record ItemCard(
     public bool HasIcon => Icon is not null;
 
     /// <summary>
-    /// Count shown on the tile itself, for categories where the number is the whole point.
+    /// Second line on the tile.
     /// </summary>
     /// <remarks>
-    /// Boss Kills is three rows of a single integer each; making someone select a tile to read
-    /// one number is the wrong trade. Categories whose counter carries no information — a
-    /// Shortcut is always exactly 1 — deliberately show nothing.
+    /// For a tally it is the count, because Boss Kills is three rows of a single integer each
+    /// and making someone select a tile to read one number is the wrong trade. For a checklist
+    /// it is the raw tag segment, because several shortcuts share one level and would otherwise
+    /// be three identical "The Great Divide" tiles. A Shortcut's counter is always exactly 1, so
+    /// that is never worth showing.
     /// </remarks>
-    public string? CountLine => TagSemantics.KindOf(CategoryKey) switch
+    public string? SubText => TagSemantics.KindOf(CategoryKey) switch
     {
         ProgressKind.Tally when Value is { } v && v > 0 => CategoryKey switch
         {
@@ -42,10 +44,27 @@ public sealed record ItemCard(
             "KillsFor" => v == 1 ? "1 boss kill" : $"{v} boss kills",
             _ => v.ToString(),
         },
+        ProgressKind.Checklist => PlaceDetail,
         _ => null,
     };
 
-    public bool HasCountLine => CountLine is not null;
+    public bool HasSubText => SubText is not null;
+
+    /// <summary>
+    /// The tag's own wording, shown under a resolved level name so shortcuts in the same level
+    /// stay distinguishable. Null when the name already is the tag.
+    /// </summary>
+    private string? PlaceDetail
+    {
+        get
+        {
+            string leaf = Tag[(Tag.IndexOf('.') + 1)..];
+            int second = leaf.IndexOf('.');
+            string detail = second >= 0 ? leaf[(second + 1)..] : leaf;
+            string pretty = TagText.Humanize(detail);
+            return string.Equals(pretty, Name, StringComparison.OrdinalIgnoreCase) ? null : pretty;
+        }
+    }
 }
 
 /// <summary>One god ("Divinity") tile.</summary>
@@ -91,6 +110,11 @@ public sealed record QuestStepRow(QuestStep Step)
     };
 
     public bool HasDetail => Detail is not null;
+
+    /// <summary>The game's own line for where a collectible is found, when it has one.</summary>
+    public string? Flavor => Step.Flavor;
+
+    public bool HasFlavor => Step.Flavor is not null;
 
     public string KindLabel => Step.Kind switch
     {

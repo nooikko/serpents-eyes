@@ -36,7 +36,14 @@ public sealed record QuestStep(
     int Order,
     string Label,
     string FullTag,
-    int Value);
+    int Value)
+{
+    /// <summary>
+    /// The game's own pickup line for a collectible, which names where it is found. Null for
+    /// stages and encounters, which the game ships no text for.
+    /// </summary>
+    public string? Flavor => TagDatabase.QuestFlavor(FullTag);
+}
 
 /// <summary>
 /// Decomposes <c>Progression.Quest.*</c> tags into ordered questlines per NPC.

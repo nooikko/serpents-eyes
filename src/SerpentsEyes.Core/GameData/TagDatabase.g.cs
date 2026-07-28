@@ -312,4 +312,13 @@ public static partial class TagDatabase
         new("TheWitness", ["Progression.Quest.TheWitness.Event.0", "Progression.Quest.TheWitness.Event.1", "Progression.Quest.TheWitness.Part.0", "Progression.Quest.TheWitness.Part.1", "Progression.Quest.TheWitness.Part.2", "Progression.Quest.TheWitness.Part.3", "Progression.Quest.TheWitness.Part.4", "Progression.Quest.TheWitness.Part.5"]),
         new("Vagabond", ["Progression.Quest.Vagabond.Event.0", "Progression.Quest.Vagabond.Event.1", "Progression.Quest.Vagabond.Event.2", "Progression.Quest.Vagabond.Part.0", "Progression.Quest.Vagabond.Part.1", "Progression.Quest.Vagabond.Part.2", "Progression.Quest.Vagabond.Part.3", "Progression.Quest.Vagabond.Part.4"]),
     ];
+
+    private static readonly (string Tag, string Text)[] QuestFlavorEntries =
+    [
+        ("Progression.Quest.LordMalvo.BerserkerKidney", "You pull a weirdly appetizing kidney out of the corpse of the Sunclad Wanderer."),
+        ("Progression.Quest.LordMalvo.CrusaderHeart", "You pull the still twitching heart out of the guardian."),
+        ("Progression.Quest.LordMalvo.ObserverEye", "You pull the eye out of it's socket from the Observer."),
+        ("Progression.Quest.LordMalvo.PygmyMeat", "You cut a piece of meat loose from the Devotee and pocket it."),
+        ("Progression.Quest.Mujica.GlassShard", "You find a shard of strange glass ledged into the flesh of the corpse."),
+    ];
 }

@@ -213,8 +213,8 @@
                                         <ItemsControl ItemsSource="{Binding Rows}">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate x:DataType="vm:QuestStepRow">
-                                                    <Grid ColumnDefinitions="Auto,*,Auto,Auto"
-                                                          Margin="0,3" Opacity="{Binding RowOpacity}">
+                                                  <StackPanel Margin="0,3" Opacity="{Binding RowOpacity}">
+                                                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
                                                         <TextBlock Grid.Column="0" Text="{Binding Marker}"
                                                                    FontSize="10" Margin="0,0,9,0"
                                                                    VerticalAlignment="Center"
@@ -236,6 +236,13 @@
                                                                    IsVisible="{Binding HasDetail}"
                                                                    Foreground="{StaticResource TextMuted}" />
                                                     </Grid>
+                                                    <!-- The game's own pickup line, which says where the item comes from -->
+                                                    <TextBlock Text="{Binding Flavor}" FontSize="10.5"
+                                                               IsVisible="{Binding HasFlavor}"
+                                                               Margin="19,2,0,3" TextWrapping="Wrap"
+                                                               FontStyle="Italic" LineHeight="15"
+                                                               Foreground="{StaticResource GoldDim}" />
+                                                  </StackPanel>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
@@ -276,8 +283,8 @@
                                            TextAlignment="Center" MaxHeight="34"
                                            Foreground="{StaticResource Text}" />
                                 <!-- Counts that are the whole point of the category, e.g. Boss Kills -->
-                                <TextBlock Text="{Binding CountLine}" FontSize="10" TextAlignment="Center"
-                                           IsVisible="{Binding HasCountLine}"
+                                <TextBlock Text="{Binding SubText}" FontSize="10" TextAlignment="Center"
+                                           IsVisible="{Binding HasSubText}"
                                            Foreground="{StaticResource TextMuted}" />
                             </StackPanel>
                         </DataTemplate>
