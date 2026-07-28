@@ -1,0 +1,6 @@
+# Last matching pattern wins (the opposite of .gitignore).
+
+*                        @nooikko
+
+/.github/CODEOWNERS      @nooikko
+/.github/workflows/      @nooikko

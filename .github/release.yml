@@ -1,0 +1,12 @@
+changelog:
+  categories:
+    - title: Features
+      labels: [enhancement, feature]
+    - title: Fixes
+      labels: [bug]
+    - title: Save format
+      labels: [save-format]
+    - title: Other changes
+      labels: ["*"]
+  exclude:
+    labels: [dependencies, ci]

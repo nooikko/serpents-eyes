@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or discussion
+    url: https://github.com/nooikko/serpents-eyes/discussions
+    about: Ask about usage, the save format, or share what you have found.
+  - name: Security issue
+    url: https://github.com/nooikko/serpents-eyes/security/advisories/new
+    about: Report privately instead of opening a public issue.

@@ -1,0 +1,51 @@
+name: Save format finding
+description: You worked out what an unknown field means, or found a save shape that misparses
+labels: ["save-format"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        These are the most valuable reports this project gets. Several fields in the format are
+        still labelled "unknown", and at least one bug survived a long time because every test
+        fixture happened to have the same value in one of them.
+
+        **Please do not attach a private save.** A synthesized file that demonstrates the shape
+        is better anyway — see `SaveFileBuilder` in the test project.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of finding?
+      options:
+        - An unknown field's meaning
+        - A save that parses incorrectly
+        - A save that fails to parse at all
+        - A round-trip that is not byte-perfect
+    validations:
+      required: true
+
+  - type: textarea
+    id: finding
+    attributes:
+      label: What did you find?
+      description: Which field or offset, and what you believe it means.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: >
+        Hex around the region, how the value changes with in-game actions, or how many saves
+        you checked. Byte offsets are especially helpful.
+      render: text
+    validations:
+      required: true
+
+  - type: input
+    id: game-version
+    attributes:
+      label: Game version or build
+    validations:
+      required: false

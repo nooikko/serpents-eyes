@@ -1,0 +1,102 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (without the leading v), for dry runs'
+        required: false
+        default: '0.0.0-dev'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Publish ${{ matrix.rid }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rid: [win-x64, win-arm64]
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Derive version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          else
+            echo "VERSION=${{ inputs.version }}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Test
+        run: dotnet test -c Release
+
+      # The AOT toolchain shells out to vswhere to locate the MSVC linker. It is installed on
+      # the runner but not always on PATH, and the resulting error is unrecognizable.
+      - name: Put vswhere on PATH
+        shell: pwsh
+        run: |
+          $installer = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer"
+          if (Test-Path "$installer\vswhere.exe") {
+            Add-Content -Path $env:GITHUB_PATH -Value $installer
+          } else {
+            Write-Warning "vswhere.exe not found at $installer"
+          }
+
+      - name: Publish
+        run: >
+          dotnet publish src/SerpentsEyes.App
+          -c Release
+          -r ${{ matrix.rid }}
+          -p:Version=${{ env.VERSION }}
+          -o publish/${{ matrix.rid }}
+
+      - name: Package
+        shell: pwsh
+        run: |
+          # Debug symbols roughly double the download and help nobody who just wants to run it.
+          Remove-Item publish/${{ matrix.rid }}/*.pdb -ErrorAction SilentlyContinue
+          Copy-Item README.md, LICENSE publish/${{ matrix.rid }}/
+          Compress-Archive -Path publish/${{ matrix.rid }}/* `
+            -DestinationPath SerpentsEyes-${{ env.VERSION }}-${{ matrix.rid }}.zip
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: package-${{ matrix.rid }}
+          path: SerpentsEyes-*.zip
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    # Only a real tag push publishes; workflow_dispatch stops after building, so the
+    # whole pipeline can be rehearsed without cutting a release.
+    if: github.event_name == 'push'
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: package-*
+          merge-multiple: true
+          path: dist
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: dist/*.zip
+          generate_release_notes: true
+          draft: false
+          # A SemVer prerelease tag (v1.2.0-beta.1) contains a hyphen.
+          prerelease: ${{ contains(github.ref_name, '-') }}
