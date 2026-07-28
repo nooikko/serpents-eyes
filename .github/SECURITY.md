@@ -32,8 +32,17 @@ Include what you did, what happened, and the affected version. A crafted file th
 the problem is the most useful thing you can attach — and unlike a bug report, a synthesized
 file is preferred over a real save, since it will not contain anyone's progression.
 
-Expect an initial response within a week. I will confirm the report, agree a fix, and credit you
-in the release notes unless you would rather I did not.
+**Please be realistic about timing.** This is a side project and I do not check GitHub often, so
+a reply may take weeks. I am not going to promise a response window I won't meet. GitHub will
+email me about a security advisory, which is the most likely thing to reach me quickly, but
+treat "weeks" as the expectation rather than "days".
+
+When I do get to it, I will confirm the report, agree a fix, and credit you in the release notes
+unless you would rather I did not.
+
+Given that, please weigh the risk here honestly before deciding how long to wait on me: this is
+an offline viewer for files you already have on your own machine. If you find something and I go
+quiet, disclosing publicly after a reasonable wait is fine by me.
 
 ## Out of scope
 

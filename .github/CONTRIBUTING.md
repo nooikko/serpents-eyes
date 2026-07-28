@@ -2,6 +2,18 @@
 
 Thanks for taking a look. Bug reports, save-format findings, and pull requests are all welcome.
 
+## Before you invest time
+
+This is a finished side project, not something I work on weekly, and **I don't check GitHub
+often**. A reply will likely take weeks. I'd rather say that up front than have you polish a
+pull request and then hear nothing.
+
+So: small, self-contained changes are the ones most likely to get merged without a long
+back-and-forth. If you're planning something large, open an issue describing it first — not for
+permission, but so you don't build something substantial that turns out to conflict with how the
+save format is handled. And if waiting isn't workable for you, fork it. That's a perfectly good
+outcome and part of why this is MIT.
+
 ## Reporting a bug
 
 [Open an issue](https://github.com/nooikko/serpents-eyes/issues/new/choose). The bug report form
