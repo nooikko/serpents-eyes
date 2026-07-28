@@ -7,7 +7,7 @@
     "Horta's Antithesis",
     "Mace of the Maiden"
   ],
-  "_hiddenTagsNote": "Content whose game-authored text describes the Doom mechanic, which has been removed from the game. The seeds that used to grant Doom were rewritten (Item.Seed.DoomHit now reads 'Sanguine', SecondaryDoomAoe reads 'Blight/Rot') but these two were not, so the game still ships descriptions for a stat that no longer exists. Hidden rather than reworded, because inventing replacement text would be a guess.",
+  "_hiddenTagsNote": "Content whose game-authored description documents a mechanic that has been removed, so the game ships text for something that no longer exists. Hidden rather than reworded, because inventing replacement text would be a guess. Staleness is judged ONLY on player-facing text - display name, description, flavour, unlock hint, mastery text. Never on tags or internal asset ids: reworked content keeps its old filename, so Item.Seed.DoomHit is the live, obtainable 'Claret Sequelae' dealing Sanguine damage, and Item.Seed.SecondaryDoomAoe is 'Evergaze Berries' dealing Blight. Filtering on the name would delete working content.",
   "hiddenTags": [
     {
       "tag": "Progression.Blessing.DoomProc",

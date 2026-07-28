@@ -123,6 +123,26 @@ public class TagSemanticsTests
     }
 
     [Fact]
+    public void Reworked_Content_Survives_Its_Legacy_Asset_Name()
+    {
+        // These two seeds used to grant Doom and were rewritten when it was removed: new names,
+        // new effects, no mention of Doom anywhere a player can see. Only the asset path is a
+        // fossil, and both are obtainable in a run.
+        //
+        // Whether content is stale is decided on player-facing text, never on internal names.
+        // Filtering on the tag or the internal id would delete two working seeds.
+        var claret = TagDatabase.Find("Item.Seed.DoomHit");
+        var evergaze = TagDatabase.Find("Item.Seed.SecondaryDoomAoe");
+
+        Assert.NotNull(claret);
+        Assert.NotNull(evergaze);
+        Assert.Equal("Claret Sequelae", claret!.DisplayName);
+        Assert.Equal("Evergaze Berries", evergaze!.DisplayName);
+        Assert.Contains("Sanguine", claret.Description!, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Blight", evergaze.Description!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void Content_Belonging_To_A_Hidden_God_Is_Dropped()
     {
         // A blessing is chosen at its god's statue, so one belonging to an unreachable statue
