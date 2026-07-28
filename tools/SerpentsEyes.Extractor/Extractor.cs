@@ -344,6 +344,18 @@ internal static partial class Extractor
             e is { Category: "Weapon", HasProgression: false }
             && (e.DisplayName is null || !canonicalUntagged.Contains(e.DisplayName)));
         Console.WriteLine($"Dropped {dropped} duplicate/internal weapon variants");
+
+        // Drop content whose game-authored description documents a removed mechanic. The game
+        // still ships the old text, so there is nothing to extract that would be correct.
+        if (doc.RootElement.TryGetProperty("hiddenTags", out var hidden))
+        {
+            var hiddenTags = hidden.EnumerateArray()
+                .Select(e => e.GetProperty("tag").GetString()!)
+                .ToHashSet(StringComparer.Ordinal);
+            int removed = entries.RemoveAll(e => hiddenTags.Contains(e.Tag));
+            Console.WriteLine($"Dropped {removed} entries describing removed mechanics");
+        }
+
         var byTag = new Dictionary<string, string>(StringComparer.Ordinal);
         var byName = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var hint in doc.RootElement.GetProperty("hints").EnumerateArray())

@@ -12,7 +12,7 @@
         Width="1280" Height="800" MinWidth="980" MinHeight="600"
         Background="{StaticResource Bg0}"
         ExtendClientAreaToDecorationsHint="True"
-        WindowDecorations="None"
+        WindowDecorations="BorderOnly"
         DragDrop.AllowDrop="True">
 
     <Grid RowDefinitions="Auto,*">

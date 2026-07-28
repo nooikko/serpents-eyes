@@ -7,6 +7,11 @@
     "Horta's Antithesis",
     "Mace of the Maiden"
   ],
+  "_hiddenTagsNote": "Content whose game-authored text describes the Doom mechanic, which has been removed from the game. The seeds that used to grant Doom were rewritten (Item.Seed.DoomHit now reads 'Sanguine', SecondaryDoomAoe reads 'Blight/Rot') but these two were not, so the game still ships descriptions for a stat that no longer exists. Hidden rather than reworded, because inventing replacement text would be a guess.",
+  "hiddenTags": [
+    { "tag": "Progression.Blessing.DoomProc", "reason": "Description still reads 'Inflict a stack of Doom'; Doom was removed." },
+    { "tag": "Progression.Mushroom.DotFocus_Doom", "reason": "Description still reads 'Increase Doom by 25+25*{l}%'; Doom was removed." }
+  ],
   "hints": [
     { "tag": "Progression.Mushroom.EarthenMight", "hint": "Post-boss event 'The Carver': answer Hardiness", "source": "wiki" },
     { "tag": "Progression.Mushroom.InnerTenacity", "hint": "Post-boss event 'The Hag': take the experimental mixture", "source": "wiki" },
