@@ -25,8 +25,6 @@ public sealed partial class DetailModel
 
     // God-specific
     public bool IsGod { get; init; }
-    public string? GodLine { get; init; }
-    public Bitmap? GodSymbol { get; init; }
     public string? Lore { get; init; }
     public string? StatuePrompt { get; init; }
     public string? Themes { get; init; }
@@ -49,7 +47,6 @@ public sealed partial class DetailModel
     public static DetailModel ForItem(ItemCard card)
     {
         var info = card.Info;
-        var god = info?.God is { } g ? TagDatabase.FindGod(g) : null;
 
         // Wording follows what the category's counter actually means. An Aspect is unlocked once
         // and stays unlocked; a Blessing counter is how many times it has been taken, so calling
@@ -65,14 +62,11 @@ public sealed partial class DetailModel
             ? TagSemantics.CounterText(card.CategoryKey, card.Tag, v)
             : null;
 
-        // Only Blessings are mechanically god-gated: they are chosen at that god's statue.
-        // Elsewhere the god tag is thematic grouping that only drives the card art — nothing in
-        // the game's shop, altar or loot logic reads it — so showing it as "Affinity" invited
-        // the reader to believe it meant something. Sael, which is not a divinity at all, is one
-        // of the values it takes.
-        string? godLine = god is not null && card.CategoryKey == "Blessing"
-            ? $"Blessed by {god.FullName}"
-            : null;
+        // The god tag on an item is thematic grouping that drives the card art and nothing else —
+        // no shop, altar or loot logic reads it, and Sael, not a divinity at all, is one of the
+        // values it takes. Naming the god in the detail pane ("Blessed by …") read as a game
+        // mechanic to anyone who saw it, so it is deliberately not surfaced here. The god page
+        // still lists its own blessings, which is where that relationship does mean something.
 
         return new DetailModel
         {
@@ -89,8 +83,6 @@ public sealed partial class DetailModel
             Flavor = info?.Flavor,
             ScalingRows = BuildScalingRows(info?.RawDescription),
             Masteries = info?.Masteries ?? [],
-            GodLine = godLine,
-            GodSymbol = IconStore.Get(god?.SymbolKey),
         };
     }
 

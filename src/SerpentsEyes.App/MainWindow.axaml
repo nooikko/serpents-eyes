@@ -332,12 +332,6 @@
                                 <TextBlock Text="{Binding Name}" FontFamily="{StaticResource DisplayFont}"
                                            FontSize="20" TextWrapping="Wrap"
                                            Foreground="{StaticResource Text}" />
-                                <StackPanel Orientation="Horizontal" Spacing="6"
-                                            IsVisible="{Binding GodLine, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                    <Image Source="{Binding GodSymbol}" Width="16" Height="16" />
-                                    <TextBlock Text="{Binding GodLine}" FontSize="12"
-                                               Foreground="{StaticResource Gold}" />
-                                </StackPanel>
                             </StackPanel>
 
                             <StackPanel Spacing="2">
