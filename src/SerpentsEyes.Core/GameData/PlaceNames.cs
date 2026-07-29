@@ -17,6 +17,13 @@ namespace SerpentsEyes.Core.GameData;
 public static class PlaceNames
 {
     /// <summary>
+    /// Longest name normalized on the stack. Real ones are around 20 characters; anything past
+    /// this is not a place name, and a stack allocation sized by the caller's string is a crash
+    /// that cannot be caught. <see cref="LevelTitle"/> is public, so the length is not ours.
+    /// </summary>
+    private const int MaxStackNormalize = 256;
+
+    /// <summary>
     /// Shortcut-tag spellings that differ from the level key for the same place.
     /// </summary>
     private static readonly (string From, string To)[] Aliases =
@@ -74,7 +81,9 @@ public static class PlaceNames
     /// <summary>Strips separators and whitespace so tag spellings and level keys can be compared.</summary>
     private static string Normalize(string tagName)
     {
-        Span<char> buffer = stackalloc char[tagName.Length];
+        Span<char> buffer = tagName.Length <= MaxStackNormalize
+            ? stackalloc char[MaxStackNormalize]
+            : new char[tagName.Length];
         int length = 0;
         foreach (char c in tagName)
         {

@@ -12,7 +12,9 @@ someone is handed a save file by a stranger.
 
 The parser is written defensively against this: lengths and counts are bounded before any
 allocation, the recursive-descent formula parsers are depth-limited, and `MalformedInputTests`
-fuzzes truncated and random input asserting that nothing but `SaveFormatException` ever escapes.
+fuzzes truncated input, random input, and corruption below an intact header, asserting that
+nothing but `SaveFormatException` ever escapes the parser and that whatever does parse still
+round-trips and survives the readers built on top of it.
 If you find a way around that, it is a security issue and I would like to know.
 
 Also in scope: anything in the release pipeline that could ship a build that does not match this

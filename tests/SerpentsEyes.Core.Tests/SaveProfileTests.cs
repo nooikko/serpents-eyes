@@ -105,6 +105,16 @@ public class SaveProfileTests
     }
 
     [Fact]
+    public void AddRecord_Rejects_A_Tag_The_Parser_Could_Never_Read_Back()
+    {
+        var profile = SaveProfile.Load(ProfilePath);
+
+        // Accepting this would build a profile that serializes to a file Parse then rejects.
+        Assert.Throws<ArgumentException>(() => profile.AddRecord(new string('a', 5000), 1));
+        Assert.Equal(150, profile.Records.Count);
+    }
+
+    [Fact]
     public void Truncated_File_Throws_SaveFormatException()
     {
         byte[] original = File.ReadAllBytes(ProfilePath);

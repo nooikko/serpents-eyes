@@ -83,11 +83,23 @@ public sealed class SaveProfile
     }
 
     /// <summary>Appends a new record. The tag is not validated against the game's known tags.</summary>
-    /// <param name="fullTag">Full tag, e.g. "Progression.Class.WellRounded".</param>
+    /// <param name="fullTag">Full tag, e.g. "Progression.Class.WellRounded". Must be shorter than 4096 characters.</param>
     /// <param name="value">Counter value.</param>
     /// <returns>The record that was added.</returns>
     public TagRecord AddRecord(string fullTag, int value)
     {
+        ArgumentNullException.ThrowIfNull(fullTag);
+
+        // The parser refuses to read a string this long back, so accepting one here would build
+        // a profile that ToBytes writes happily and Parse then rejects. The bound also keeps
+        // tag text away from the stack-allocated buffers downstream of it.
+        if (fullTag.Length >= SpanReader.MaxPlausibleStringLength)
+        {
+            throw new ArgumentException(
+                $"Tag is {fullTag.Length} characters; the format supports fewer than {SpanReader.MaxPlausibleStringLength}",
+                nameof(fullTag));
+        }
+
         var record = new TagRecord(fullTag, value);
         _records.Add(record);
         return record;

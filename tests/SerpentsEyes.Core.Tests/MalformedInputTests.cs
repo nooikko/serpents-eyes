@@ -120,6 +120,62 @@ public class MalformedInputTests
     }
 
     [Fact]
+    public void Mutating_A_Real_Save_Below_The_Header_Stays_Within_Contract()
+    {
+        // Random bytes practically never satisfy the format-id check, so the test above only
+        // ever exercises the header. Keeping a real header and corrupting what follows is what
+        // reaches the record and trailer parsers, and what a save someone edited actually looks
+        // like. Everything that parses must also round-trip and survive the GameData builders.
+        byte[] original = File.ReadAllBytes(ProfilePath);
+        int marker = original.AsSpan().IndexOf("NG_SaveFormat"u8);
+        Assert.True(marker > 0, "fixture has no format id");
+        int bodyStart = marker + original.AsSpan(marker).IndexOf((byte)0) + 1;
+
+        var random = new Random(20260728); // fixed seed: failures must be reproducible
+        var stopwatch = Stopwatch.StartNew();
+        int parsed = 0;
+
+        for (int i = 0; i < 2000; i++)
+        {
+            byte[] mutant = (byte[])original.Clone();
+            for (int edit = random.Next(1, 5); edit > 0; edit--)
+            {
+                mutant[random.Next(bodyStart, mutant.Length)] = (byte)random.Next(256);
+            }
+
+            SaveProfile profile;
+            try
+            {
+                profile = SaveProfile.Parse(mutant);
+            }
+            catch (SaveFormatException)
+            {
+                continue;
+            }
+            catch (Exception ex)
+            {
+                Assert.Fail($"Mutant #{i} threw {ex.GetType().Name} from Parse: {ex.Message}");
+                continue;
+            }
+
+            parsed++;
+            try
+            {
+                Assert.Equal(mutant, profile.ToBytes());
+                _ = profile.ValuesByTag();
+                _ = Core.GameData.QuestLines.Build(profile);
+            }
+            catch (Exception ex) when (ex is not Xunit.Sdk.XunitException)
+            {
+                Assert.Fail($"Mutant #{i} parsed but then threw {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+
+        Assert.True(parsed > 200, $"only {parsed} of 2000 mutants parsed; the body is barely being reached");
+        Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(30), $"2000 mutants took {stopwatch.Elapsed}");
+    }
+
+    [Fact]
     public void Empty_File_Throws()
     {
         Assert.Throws<SaveFormatException>(() => SaveProfile.Parse([]));

@@ -279,6 +279,19 @@ public sealed class MainViewModel : ViewModelBase
             RefreshSnapshot();
             RefreshItems();
         }
+        catch (Exception ex)
+        {
+            // The parse above is guarded, but building the view from the result is not, and a
+            // file can parse cleanly and still be odd enough to trip something downstream.
+            // Without this the window is left half-built with no explanation; dropping the
+            // profile puts it back in the same state it has before any file is opened.
+            _profile = null;
+            FileInfoText = string.Empty;
+            StatusMessage = $"Could not read {Path.GetFileName(path)}: {ex.Message}";
+            RebuildCategories();
+            RefreshSnapshot();
+            RefreshItems();
+        }
         finally
         {
             if (generation == _loadGeneration)

@@ -67,6 +67,18 @@ public class PlaceNamesTests
     }
 
     [Fact]
+    public void A_Very_Long_Name_Is_Answered_Rather_Than_Overflowing_The_Stack()
+    {
+        // This is a public entry point, so the length of its argument is the caller's, not ours.
+        // Sizing a stack allocation by it used to kill the process outright, and a stack
+        // overflow cannot be caught, logged, or reported to the user.
+        Assert.Null(PlaceNames.LevelTitle(new string('a', 2_000_000)));
+
+        // The bounded path must still normalize the same way the stack path does.
+        Assert.Equal("The Grand Library", PlaceNames.LevelTitle("Attaresh.Library.0".PadRight(400, ' ')));
+    }
+
+    [Fact]
     public void Quest_Collectibles_Carry_The_Games_Own_Pickup_Line()
     {
         // StringTable_Rewards says where each quest item comes from, which is the only genuinely
