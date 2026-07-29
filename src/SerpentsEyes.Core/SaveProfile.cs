@@ -63,6 +63,25 @@ public sealed class SaveProfile
     public TagRecord? Find(string fullTag)
         => _records.Find(r => string.Equals(r.FullTag, fullTag, StringComparison.Ordinal));
 
+    /// <summary>
+    /// The records as a tag-to-value map, for callers that need lookups rather than file order.
+    /// </summary>
+    /// <remarks>
+    /// A save is a list, not a map, and the format does not stop the same tag appearing twice —
+    /// a corrupt or hand-edited file can contain duplicates and still parse and round-trip
+    /// exactly. Later records win here, matching a map-based loader reading the same bytes.
+    /// Use this rather than <c>Records.ToDictionary(...)</c>, which throws on the duplicate.
+    /// </remarks>
+    public Dictionary<string, int> ValuesByTag()
+    {
+        var values = new Dictionary<string, int>(_records.Count, StringComparer.Ordinal);
+        foreach (TagRecord record in _records)
+        {
+            values[record.FullTag] = record.Value;
+        }
+        return values;
+    }
+
     /// <summary>Appends a new record. The tag is not validated against the game's known tags.</summary>
     /// <param name="fullTag">Full tag, e.g. "Progression.Class.WellRounded".</param>
     /// <param name="value">Counter value.</param>

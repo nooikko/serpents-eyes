@@ -450,7 +450,7 @@ public sealed class MainViewModel : ViewModelBase
             return;
         }
 
-        var ownedValues = _profile.Records.ToDictionary(r => r.FullTag, r => r.Value, StringComparer.Ordinal);
+        var ownedValues = _profile.ValuesByTag();
 
         // Search spans the categories this profile actually has, not a fixed list: a game
         // update adding a category, or anything landing in TagRecord's "Other" bucket, still
@@ -525,8 +525,7 @@ public sealed class MainViewModel : ViewModelBase
 
     private IEnumerable<GodCard> BuildGodCards()
     {
-        var values = _profile?.Records.ToDictionary(r => r.FullTag, r => r.Value, StringComparer.Ordinal)
-            ?? new Dictionary<string, int>(StringComparer.Ordinal);
+        var values = _profile?.ValuesByTag() ?? new Dictionary<string, int>(StringComparer.Ordinal);
 
         // See GodInfo.IsDivinity: excludes Sael, which has no statue, and the Keeper of Eyes,
         // which is reworked legacy content.

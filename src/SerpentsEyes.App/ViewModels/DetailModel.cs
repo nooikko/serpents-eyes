@@ -88,8 +88,7 @@ public sealed partial class DetailModel
 
     public static DetailModel ForGod(GodCard card, SaveProfile? profile)
     {
-        var ownedTags = profile?.Records.ToDictionary(r => r.FullTag, r => r.Value, StringComparer.Ordinal)
-            ?? new Dictionary<string, int>(StringComparer.Ordinal);
+        var ownedTags = profile?.ValuesByTag() ?? new Dictionary<string, int>(StringComparer.Ordinal);
 
         var lockRules = TagDatabase.BlessingLockRules
             .OrderBy(kv => kv.Key)

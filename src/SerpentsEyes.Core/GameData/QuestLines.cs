@@ -153,9 +153,16 @@ public static class QuestLines
     {
         ArgumentNullException.ThrowIfNull(profile);
 
-        var saved = profile.Records
-            .Where(r => string.Equals(r.Category, Category, StringComparison.Ordinal))
-            .ToDictionary(r => r.FullTag, r => r.Value, StringComparer.Ordinal);
+        // Assignment rather than ToDictionary: a save may legally repeat a tag, and the later
+        // record wins. See SaveProfile.ValuesByTag.
+        var saved = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (TagRecord record in profile.Records)
+        {
+            if (string.Equals(record.Category, Category, StringComparison.Ordinal))
+            {
+                saved[record.FullTag] = record.Value;
+            }
+        }
 
         // Union of what the game defines and what this save happens to contain.
         var tagsByOwner = new Dictionary<string, SortedSet<string>>(StringComparer.OrdinalIgnoreCase);
